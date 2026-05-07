@@ -11,4 +11,13 @@ readonly class FilterLeaf implements FilterNode {
         if ($this->operator === 'in' && !is_array($this->value)) throw ReportMakerException::badFilterValue($this->operator);
         if ($this->operator === 'between' && (!is_array($this->value) || count($this->value) !== 2)) throw ReportMakerException::badFilterValue($this->operator);
     }
+
+    public function toArray(): array {
+        return [
+            'type' => 'leaf',
+            'attribute' => $this->attribute->toArray(),
+            'operator' => $this->operator,
+            'value' => $this->value,
+        ];
+    }
 }

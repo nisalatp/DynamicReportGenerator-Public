@@ -1,0 +1,49 @@
+@startuml Use Case Diagram
+title Dynamic Report Generator - Use Case Diagram
+
+left to right direction
+
+actor "End User" as User
+actor "Admin / Report Owner" as Admin
+actor "Client Application" as HostApp
+
+package "Dynamic Report Generator Package" {
+  usecase "Design Custom Report" as UC_Design
+  usecase "Save Report" as UC_Save
+  usecase "Execute Report" as UC_Execute
+  usecase "Update Report" as UC_Update
+  usecase "Delete Report" as UC_Delete
+  usecase "Assign Report to User" as UC_Assign
+  usecase "Unassign Report" as UC_Unassign
+  usecase "View Assigned Reports" as UC_ViewAssigned
+  usecase "View Audit Logs" as UC_Audit
+  
+  usecase "Discover Eloquent Relationships" as UC_Discover
+  usecase "Generate SQL Query Builder" as UC_Generate
+}
+
+User --> UC_Execute
+User --> UC_ViewAssigned
+User --> UC_Design
+User --> UC_Save
+
+Admin --> UC_Execute
+Admin --> UC_ViewAssigned
+Admin --> UC_Design
+Admin --> UC_Save
+Admin --> UC_Update
+Admin --> UC_Delete
+Admin --> UC_Assign
+Admin --> UC_Unassign
+Admin --> UC_Audit
+
+UC_Execute ..> UC_Generate : <<includes>>
+UC_Design ..> UC_Discover : <<includes>>
+
+note right of HostApp
+  The Host Laravel Application integrates
+  these use cases and handles actual HTTP
+  authentication and pagination.
+end note
+
+@enduml

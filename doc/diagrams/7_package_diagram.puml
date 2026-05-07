@@ -1,0 +1,53 @@
+@startuml Package Diagram
+title Dynamic Report Generator - Package Diagram
+
+package "Nisalatp\\DynamicReportGenerator" {
+    
+    package "Providers" {
+        [DynamicReportGeneratorServiceProvider]
+    }
+    
+    package "Facades" {
+        [DynamicReport]
+    }
+
+    package "Engine" {
+        [ReportMaker]
+    }
+
+    package "Types (AST & DTOs)" {
+        [ReportRequest]
+        [FilterNode]
+        [Attribute]
+        [Aggregate]
+        [GroupBy]
+        [ReportSerializer]
+        [JoinPlan]
+    }
+
+    package "Models" {
+        [SavedReport]
+        [ReportLog]
+    }
+
+    package "Exceptions" {
+        [ReportMakerException]
+    }
+}
+
+package "Illuminate (Laravel Framework)" {
+    [Database\\Eloquent\\Model]
+    [Database\\Query\\Builder]
+    [Support\\ServiceProvider]
+}
+
+Providers --> Engine : "Instantiates"
+Facades --> Engine : "Proxies"
+Engine --> Types : "Consumes / Generates"
+Engine --> Models : "CRUD Operations"
+Engine --> Exceptions : "Throws"
+Types --> Exceptions : "Throws"
+Models --> Illuminate : "Extends Eloquent"
+Engine --> Illuminate : "Uses Query Builder"
+
+@enduml

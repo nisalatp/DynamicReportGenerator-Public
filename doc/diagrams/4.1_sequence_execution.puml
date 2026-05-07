@@ -1,0 +1,45 @@
+@startuml Sequence Execution Diagram
+title Execution and Logging Sequence
+
+actor Client
+participant "ReportMaker" as Maker
+participant "SavedReport" as DBReport
+participant "ReportLog" as DBLog
+participant "ReportRequest" as Request
+participant "ReportSerializer" as Serializer
+
+Client -> Maker : loadAndGenerate(reportId, userId)
+activate Maker
+
+Maker -> DBReport : findOrFail(reportId)
+activate DBReport
+DBReport --> Maker : SavedReport Model
+deactivate DBReport
+
+Maker -> Request : fromJson(savedReport->payload)
+activate Request
+Request -> Serializer : fromJson(json)
+activate Serializer
+Serializer --> Request : ReportRequest Object (AST)
+deactivate Serializer
+Request --> Maker : ReportRequest Object
+deactivate Request
+
+Maker -> Maker : generate(ReportRequest)
+activate Maker
+Maker -> Maker : buildInnerQuery()
+Maker -> Maker : buildOuterQuery()
+Maker --> Maker : Query Builder
+deactivate Maker
+
+Maker -> DBLog : create(action='executed', details)
+activate DBLog
+DBLog --> Maker : ReportLog Model
+deactivate DBLog
+
+Maker --> Client : Query Builder
+deactivate Maker
+
+Client -> Client : builder->paginate()
+
+@enduml

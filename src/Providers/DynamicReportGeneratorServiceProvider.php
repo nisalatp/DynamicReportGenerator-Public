@@ -28,6 +28,8 @@ class DynamicReportGeneratorServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../../config/dynamicreportgenerator.php' => config_path('dynamicreportgenerator.php'),

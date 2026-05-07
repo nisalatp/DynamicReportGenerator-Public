@@ -1,0 +1,36 @@
+@startuml Sequence Load To Editor
+title Workflow: Loading a Report into the UI Editor
+
+actor Client
+participant "ReportMaker" as Maker
+participant "SavedReport" as DBReport
+participant "ReportRequest" as Request
+participant "ReportSerializer" as Serializer
+
+Client -> Maker : loadToEditor(reportId)
+activate Maker
+
+Maker -> DBReport : findOrFail(reportId)
+activate DBReport
+DBReport --> Maker : SavedReport Model
+deactivate DBReport
+
+Maker -> Request : fromJson(savedReport->payload)
+activate Request
+Request -> Serializer : fromJson(json)
+activate Serializer
+Serializer --> Request : ReportRequest Object (AST)
+deactivate Serializer
+Request --> Maker : ReportRequest Object
+deactivate Request
+
+Maker --> Client : ReportRequest Object
+deactivate Maker
+
+note right of Client
+  Client uses the structured ReportRequest
+  object to seamlessly repopulate the
+  frontend Report Builder UI.
+end note
+
+@enduml

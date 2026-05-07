@@ -1,0 +1,34 @@
+@startuml Architecture Diagram
+title Dynamic Report Generator - High Level Architecture
+
+node "Client Application (Laravel)" {
+    [Controllers]
+    [UI Framework]
+}
+
+package "Nisalatp\\DynamicReportGenerator" {
+    [ReportMaker (Engine)] as Engine
+    [Types & AST Nodes] as AST
+    [ReportSerializer] as Serializer
+    [Service Provider] as Provider
+    [Models (SavedReport, ReportLog)] as Models
+}
+
+database "MySQL / PostgreSQL" {
+    [dynamic_saved_reports]
+    [dynamic_report_logs]
+    [dynamic_report_user]
+}
+
+[Controllers] --> Engine : "Calls API\n(save, load, assign)"
+Engine --> AST : "Validates & Traverses"
+Engine --> Serializer : "Converts AST to/from JSON"
+Engine --> Models : "Manages DB State"
+
+Models --> [dynamic_saved_reports] : "Reads/Writes Payload"
+Models --> [dynamic_report_logs] : "Inserts Audit Trail"
+Models --> [dynamic_report_user] : "Manages Assignments"
+
+Provider --> [Controllers] : "Registers Config\n& Singletons"
+
+@enduml

@@ -22,6 +22,9 @@ use Nisalatp\DynamicReportGenerator\Types\FilterNode;
 use Nisalatp\DynamicReportGenerator\Types\FilterGroup;
 use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
+use Nisalatp\DynamicReportGenerator\Models\SavedReport;
+use Nisalatp\DynamicReportGenerator\Models\ReportLog;
+use Illuminate\Database\Eloquent\Collection;
 
 class ReportMaker
 {
@@ -63,6 +66,143 @@ class ReportMaker
         }
 
         return $innerQuery;
+    }
+
+    private function logAction(?int $savedReportId, ?int $userId, string $action, ?array $details = null): void
+    {
+        ReportLog::create([
+            'saved_report_id' => $savedReportId,
+            'user_id' => $userId,
+            'action' => $action,
+            'details' => $details,
+        ]);
+    }
+
+    public function saveReport(string $name, ReportRequest $request, ?int $userId = null, string $description = ''): SavedReport
+    {
+        try {
+            $report = SavedReport::create([
+                'name' => $name,
+                'description' => $description,
+                'payload' => $request->toJson(),
+                'user_id' => $userId,
+            ]);
+            
+            $this->logAction($report->id, $userId, 'created');
+            return $report;
+        } catch (\Throwable $e) {
+            $this->logAction(null, $userId, 'error', ['operation' => 'saveReport', 'message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function getSavedReports(): Collection
+    {
+        return SavedReport::orderBy('created_at', 'desc')->get();
+    }
+
+    public function loadAndGenerate(int $savedReportId, ?int $executedByUserId = null): Builder
+    {
+        try {
+            $savedReport = SavedReport::findOrFail($savedReportId);
+            
+            $json = is_string($savedReport->payload) 
+                ? $savedReport->payload 
+                : json_encode($savedReport->payload);
+
+            $request = ReportRequest::fromJson($json);
+            $builder = $this->generate($request);
+            
+            $this->logAction($savedReport->id, $executedByUserId, 'executed');
+            
+            return $builder;
+        } catch (\Throwable $e) {
+            $this->logAction($savedReportId, $executedByUserId, 'error', ['operation' => 'loadAndGenerate', 'message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function getReportLogs(int $savedReportId): Collection
+    {
+        return ReportLog::where('saved_report_id', $savedReportId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function assignReport(int $reportId, int $userId, ?int $actionByUserId = null): void
+    {
+        try {
+            $report = SavedReport::findOrFail($reportId);
+            $report->assignedUsers()->syncWithoutDetaching([$userId]);
+            $this->logAction($reportId, $actionByUserId ?? $report->user_id, 'assigned', ['assigned_user_id' => $userId]);
+        } catch (\Throwable $e) {
+            $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'assignReport', 'message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function unassignReport(int $reportId, int $userId, ?int $actionByUserId = null): void
+    {
+        try {
+            $report = SavedReport::findOrFail($reportId);
+            $report->assignedUsers()->detach($userId);
+            $this->logAction($reportId, $actionByUserId ?? $report->user_id, 'unassigned', ['unassigned_user_id' => $userId]);
+        } catch (\Throwable $e) {
+            $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'unassignReport', 'message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function getAssignedReports(int $userId): Collection
+    {
+        // Fetch reports where the user is either the owner OR explicitly assigned
+        return SavedReport::where('user_id', $userId)
+            ->orWhereHas('assignedUsers', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function loadToEditor(int $reportId): ReportRequest
+    {
+        $savedReport = SavedReport::findOrFail($reportId);
+        $json = is_string($savedReport->payload) 
+            ? $savedReport->payload 
+            : json_encode($savedReport->payload);
+
+        return ReportRequest::fromJson($json);
+    }
+
+    public function updateReport(int $reportId, string $name, ReportRequest $request, string $description = '', ?int $actionByUserId = null): SavedReport
+    {
+        try {
+            $report = SavedReport::findOrFail($reportId);
+            $report->update([
+                'name' => $name,
+                'description' => $description,
+                'payload' => $request->toJson(),
+            ]);
+            $this->logAction($reportId, $actionByUserId ?? $report->user_id, 'updated');
+            return $report;
+        } catch (\Throwable $e) {
+            $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'updateReport', 'message' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function deleteReport(int $reportId, ?int $actionByUserId = null): void
+    {
+        try {
+            $report = SavedReport::findOrFail($reportId);
+            $report->delete();
+            // Since report is deleted, saved_report_id in logs will become null due to "set null" constraint,
+            // but we can still insert a log indicating the action.
+            $this->logAction(null, $actionByUserId ?? $report->user_id, 'deleted', ['deleted_report_id' => $reportId]);
+        } catch (\Throwable $e) {
+            $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'deleteReport', 'message' => $e->getMessage()]);
+            throw $e;
+        }
     }
 
     private function getModelInfo(string $modelClass): ModelInfo
