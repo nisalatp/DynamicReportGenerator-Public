@@ -3,6 +3,7 @@ title Execution and Logging Sequence
 
 actor Client
 participant "ReportMaker" as Maker
+participant "VirtualAttributeRegistry" as VARegistry
 participant "SavedReport" as DBReport
 participant "ReportLog" as DBLog
 participant "ReportRequest" as Request
@@ -25,9 +26,18 @@ deactivate Serializer
 Request --> Maker : ReportRequest Object
 deactivate Request
 
+Maker -> Maker : extractVirtualAttributeDependencies()
+activate Maker
+Maker -> VARegistry : findByName(baseModel, name)
+VARegistry --> Maker : VirtualAttribute Model
+Maker -> Maker : Merge Dependencies into Target Models
+deactivate Maker
+
 Maker -> Maker : generate(ReportRequest)
 activate Maker
 Maker -> Maker : buildInnerQuery()
+Maker -> VARegistry : Resolve VA SQL Fragments
+VARegistry --> Maker : Raw Subquery Strings
 Maker -> Maker : buildOuterQuery()
 Maker --> Maker : Query Builder
 deactivate Maker

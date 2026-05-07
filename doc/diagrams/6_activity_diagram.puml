@@ -14,6 +14,8 @@ else (No)
 endif
 
 :Validate Base Model;
+
+:Extract Virtual Attribute Dependencies from Target Models and Filters;
 :Validate Target Models;
 
 :Discover Eloquent Relationships using Reflection;
@@ -23,6 +25,7 @@ endif
 :Initialize DB Query Builder on Base Model;
 :Apply Joins from `JoinPlan`;
 :Apply Selected Attributes (SELECT clause);
+:Resolve `va:*` Attributes via Registry into Subqueries;
 
 if (Has Inner Filters?) then (Yes)
   :Traverse Filter AST (Recursive);

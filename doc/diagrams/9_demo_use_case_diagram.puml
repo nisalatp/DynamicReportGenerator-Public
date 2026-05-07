@@ -1,0 +1,41 @@
+@startuml Demo Use Case Diagram
+title Demo Environment - Use Case Diagram
+
+left to right direction
+
+actor "Demo User (Evaluator)" as User
+
+package "Dynamic Report Demo Application" {
+  
+  package "Report Playground" {
+    usecase "Build Report Visually" as UC_BuildReport
+    usecase "Execute Live Report" as UC_ExecReport
+    usecase "Save Configuration" as UC_SaveReport
+    usecase "Browse Report Library" as UC_BrowseLib
+    usecase "Load Report to Editor" as UC_LoadReport
+    usecase "Run Saved Report" as UC_RunSaved
+  }
+
+  package "Virtual Attribute Playground" {
+    usecase "Browse Registered VAs" as UC_BrowseVA
+    usecase "Build VA Visually" as UC_BuildVA
+    usecase "Write Advanced SQL VA" as UC_AdvVA
+    usecase "Register VA to Database" as UC_RegVA
+  }
+}
+
+User --> UC_BuildReport
+User --> UC_ExecReport
+User --> UC_SaveReport
+User --> UC_BrowseLib
+User --> UC_LoadReport
+User --> UC_RunSaved
+
+User --> UC_BrowseVA
+User --> UC_BuildVA
+User --> UC_AdvVA
+
+UC_BuildVA ..> UC_RegVA : <<includes>>
+UC_AdvVA ..> UC_RegVA : <<includes>>
+
+@enduml

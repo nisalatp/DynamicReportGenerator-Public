@@ -133,7 +133,7 @@ class ReportMaker
             $report = SavedReport::create([
                 'name' => $name,
                 'description' => $description,
-                'payload' => $request->toJson(),
+                'payload' => json_decode($request->toJson(), true),
                 'user_id' => $userId,
             ]);
             
@@ -230,7 +230,7 @@ class ReportMaker
             $report->update([
                 'name' => $name,
                 'description' => $description,
-                'payload' => $request->toJson(),
+                'payload' => json_decode($request->toJson(), true),
             ]);
             $this->logAction($reportId, $actionByUserId ?? $report->user_id, 'updated');
             return $report;
