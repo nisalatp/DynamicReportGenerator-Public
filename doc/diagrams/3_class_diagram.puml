@@ -37,6 +37,39 @@ package "Nisalatp\\DynamicReportGenerator" {
         }
     }
 
+        class VirtualAttribute {
+            + id: int
+            + name: string
+            + base_model: string
+            + sql_fragment: string
+            + dependencies: array
+        }
+    }
+
+    package "Registry" {
+        class VirtualAttributeRegistry {
+            - attributes: Collection
+            + {static} getInstance(): VirtualAttributeRegistry
+            + load(): void
+            + get(name: string): VirtualAttribute|null
+            + getAll(): Collection
+        }
+    }
+
+    package "Builders" {
+        class VirtualAttributeBuilder {
+            - name: string
+            - baseModel: string
+            - sqlFragment: string
+            - dependencies: array
+            + {static} create(name: string): VirtualAttributeBuilder
+            + forBaseModel(modelClass: string): VirtualAttributeBuilder
+            + withSqlFragment(sql: string): VirtualAttributeBuilder
+            + dependsOn(targetModelClasses: array): VirtualAttributeBuilder
+            + register(): VirtualAttribute
+        }
+    }
+
     package "Types (AST & DTOs)" {
         class ReportRequest {
             + baseModel: string
@@ -81,6 +114,9 @@ package "Nisalatp\\DynamicReportGenerator" {
     ReportMaker --> ReportRequest : "consumes"
     ReportMaker --> SavedReport : "manages"
     ReportMaker --> ReportLog : "creates"
+    ReportMaker --> VirtualAttributeRegistry : "resolves va: columns"
+    VirtualAttributeBuilder ..> VirtualAttribute : "creates/updates"
+    VirtualAttributeRegistry o-- VirtualAttribute : "caches"
     ReportRequest *-- FilterNode
     FilterGroup o-- FilterNode
     ReportSerializer ..> ReportRequest : "serializes/deserializes"

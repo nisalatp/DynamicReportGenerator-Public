@@ -10,25 +10,34 @@ package "Nisalatp\\DynamicReportGenerator" {
     [ReportMaker (Engine)] as Engine
     [Types & AST Nodes] as AST
     [ReportSerializer] as Serializer
+    [VirtualAttributeRegistry] as VARegistry
+    [VirtualAttributeBuilder] as VABuilder
     [Service Provider] as Provider
-    [Models (SavedReport, ReportLog)] as Models
+    [Models (SavedReport, ReportLog, VirtualAttribute)] as Models
 }
 
-database "MySQL / PostgreSQL" {
+database "MySQL / PostgreSQL / SQLite" {
     [dynamic_saved_reports]
     [dynamic_report_logs]
     [dynamic_report_user]
+    [dynamic_virtual_attributes]
 }
 
 [Controllers] --> Engine : "Calls API\n(save, load, assign)"
+[Controllers] --> VABuilder : "Defines VAs via Playground"
 Engine --> AST : "Validates & Traverses"
 Engine --> Serializer : "Converts AST to/from JSON"
+Engine --> VARegistry : "Fetches SQL Fragments during Compilation"
 Engine --> Models : "Manages DB State"
+
+VABuilder --> [dynamic_virtual_attributes] : "Persists Raw Subqueries"
+VARegistry --> [dynamic_virtual_attributes] : "Loads & Caches VAs"
 
 Models --> [dynamic_saved_reports] : "Reads/Writes Payload"
 Models --> [dynamic_report_logs] : "Inserts Audit Trail"
 Models --> [dynamic_report_user] : "Manages Assignments"
 
 Provider --> [Controllers] : "Registers Config\n& Singletons"
+Provider --> VARegistry : "Boots Singleton Instance"
 
 @enduml

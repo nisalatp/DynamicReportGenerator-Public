@@ -24,13 +24,14 @@ use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
 use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Nisalatp\DynamicReportGenerator\Models\ReportLog;
+use Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry;
 use Illuminate\Database\Eloquent\Collection;
 
 class ReportMaker
 {
     private array $allowedModels = [];
 
-    public function __construct(array $allowedModels)
+    public function __construct(array $allowedModels, private ?VirtualAttributeRegistry $vaRegistry = null)
     {
         foreach ($allowedModels as $modelClass) {
             if (class_exists($modelClass) && is_subclass_of($modelClass, Model::class)) {
@@ -42,12 +43,16 @@ class ReportMaker
     public function generate(ReportRequest $whatUserWants): Builder
     {
         $this->ensureModelAllowed($whatUserWants->baseModel);
-        foreach ($whatUserWants->targetModels as $model) {
+        
+        $targetModels = $whatUserWants->targetModels;
+        $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
+        
+        foreach ($targetModels as $model) {
             $this->ensureModelAllowed($model);
         }
 
         $links = $this->discoverLinks();
-        $joinPlan = $this->planJoins($whatUserWants->baseModel, $whatUserWants->targetModels, $links);
+        $joinPlan = $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
 
         $innerQuery = $this->buildInnerQuery(
             $whatUserWants->baseModel,
@@ -58,14 +63,58 @@ class ReportMaker
 
         if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates) || $whatUserWants->outerFilters !== null) {
             return $this->buildOuterQuery(
+                $whatUserWants->baseModel,
                 $innerQuery,
                 $whatUserWants->groupBys,
                 $whatUserWants->aggregates,
-                $whatUserWants->outerFilters
+                $whatUserWants->outerFilters,
+                $whatUserWants->selectedAttributes
             );
         }
 
         return $innerQuery;
+    }
+
+    private function extractVirtualAttributeDependencies(ReportRequest $request, array &$targetModels): void
+    {
+        if (!$this->vaRegistry) return;
+
+        $baseModel = $request->baseModel;
+
+        foreach ($request->selectedAttributes as $attr) {
+            if ($attr->isVirtual || str_starts_with($attr->column, 'va:')) {
+                $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
+                $va = $this->vaRegistry->findByName($baseModel, $name);
+                if ($va && is_array($va->dependencies)) {
+                    $targetModels = array_merge($targetModels, $va->dependencies);
+                }
+            }
+        }
+
+        $this->extractVAsFromFilter($request->innerFilters, $baseModel, $targetModels);
+        $this->extractVAsFromFilter($request->outerFilters, $baseModel, $targetModels);
+
+        $targetModels = array_unique($targetModels);
+        $targetModels = array_values($targetModels);
+    }
+
+    private function extractVAsFromFilter(?FilterNode $node, string $baseModel, array &$targetModels): void
+    {
+        if (!$node || !$this->vaRegistry) return;
+
+        if ($node instanceof FilterGroup) {
+            foreach ($node->children as $child) {
+                $this->extractVAsFromFilter($child, $baseModel, $targetModels);
+            }
+        } elseif ($node instanceof FilterLeaf) {
+            if ($node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:')) {
+                $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
+                $va = $this->vaRegistry->findByName($baseModel, $name);
+                if ($va && is_array($va->dependencies)) {
+                    $targetModels = array_merge($targetModels, $va->dependencies);
+                }
+            }
+        }
     }
 
     private function logAction(?int $savedReportId, ?int $userId, string $action, ?array $details = null): void
@@ -357,83 +406,140 @@ class ReportMaker
 
         $selectColumns = [];
         foreach ($selects as $attr) {
+            $isVirtual = $attr->isVirtual || str_starts_with($attr->column, 'va:');
+            $finalAlias = $attr->alias ?? $attr->column;
+            
+            if ($isVirtual && $this->vaRegistry) {
+                $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
+                $va = $this->vaRegistry->findByName($base, $name);
+                if ($va) {
+                    $selectColumns[] = DB::raw($va->sql_fragment . ' as "' . $finalAlias . '"');
+                    continue;
+                }
+            }
             $alias = $aliases[$attr->modelClass] ?? 't0';
-            $selectColumns[] = $alias . '.' . $attr->column;
+            $selectColumns[] = $alias . '.' . $attr->column . ' as ' . $finalAlias;
         }
 
         $query->select(empty($selectColumns) ? ['t0.*'] : $selectColumns);
 
         if ($filters) {
-            $this->applyFilters($query, $filters, $aliases, 'where');
+            $this->applyFilters($query, $filters, $aliases, 'where', 'and', $base);
         }
 
         return $query;
     }
 
-    private function buildOuterQuery(Builder $inner, array $groups, array $aggs, ?FilterNode $filters): Builder
+    private function buildOuterQuery(string $base, Builder $inner, array $groups, array $aggs, ?FilterNode $filters, array $innerSelects = []): Builder
     {
         $query = DB::table($inner, 'inner_query');
         $selects = [];
         $groupCols = [];
 
+        $getInnerAlias = function(\Nisalatp\DynamicReportGenerator\Types\Attribute $attr) use ($innerSelects) {
+            foreach ($innerSelects as $selAttr) {
+                if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
+                    return $selAttr->alias ?? $selAttr->column;
+                }
+            }
+            return $attr->column;
+        };
+
+        $grammar = $query->getGrammar();
+
         foreach ($groups as $g) {
-            $col = 'inner_query.' . $g->attribute->column;
-            $selects[] = $col;
-            $groupCols[] = $col;
+            $innerColName = $getInnerAlias($g->attribute);
+            $colStr = 'inner_query.' . $innerColName;
+            $selects[] = $colStr;
+            $groupCols[] = $colStr;
         }
 
         foreach ($aggs as $a) {
             $func = strtoupper($a->function);
-            $innerCol = 'inner_query.' . $a->attribute->column;
-            $alias = $a->alias ?? strtolower($func . '_' . $a->attribute->column);
-            $selects[] = DB::raw("{$func}({$innerCol}) as {$alias}");
+            $innerColName = $getInnerAlias($a->attribute);
+            
+            $innerColWrapped = $grammar->wrap('inner_query.' . $innerColName);
+            $rawAliasName = $a->alias ?? strtolower($func . '_' . preg_replace('/\s+/', '_', $innerColName));
+            $aliasWrapped = $grammar->wrap($rawAliasName);
+            
+            $selects[] = DB::raw("{$func}({$innerColWrapped}) as {$aliasWrapped}");
         }
 
         $query->select(empty($selects) ? ['inner_query.*'] : $selects);
         if (!empty($groupCols)) $query->groupBy($groupCols);
 
         if ($filters) {
-            $this->applyFilters($query, $filters, [], 'having');
+            $this->applyFilters($query, $filters, [], 'having', 'and', $base);
         }
 
         return $query;
     }
 
-    private function applyFilters(Builder $query, FilterNode $node, array $aliases, string $type, string $bool = 'and'): void
+    private function applyFilters(Builder $query, FilterNode $node, array $aliases, string $type, string $bool = 'and', ?string $base = null): void
     {
         if ($node instanceof FilterGroup) {
             $method = $type === 'where' ? 'where' : 'havingNested';
-            $query->$method(function ($sub) use ($node, $aliases, $type) {
+            $query->$method(function ($sub) use ($node, $aliases, $type, $base) {
                 foreach ($node->children as $child) {
-                    $this->applyFilters($sub, $child, $aliases, $type, $node->logic);
+                    $this->applyFilters($sub, $child, $aliases, $type, $node->logic, $base);
                 }
             }, $type === 'where' ? null : $bool, null, $type === 'where' ? $bool : null);
             return;
         }
 
         if ($node instanceof FilterLeaf) {
-            $col = $type === 'where' 
-                ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
-                : $node->attribute->column;
+            $isVirtual = $node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:');
+            
+            if ($isVirtual && $this->vaRegistry && $base) {
+                $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
+                $va = $this->vaRegistry->findByName($base, $name);
+                if ($va) {
+                    $col = DB::raw($va->sql_fragment);
+                } else {
+                    $col = $type === 'where' 
+                        ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
+                        : $node->attribute->column;
+                }
+            } else {
+                $col = $type === 'where' 
+                    ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
+                    : $node->attribute->column;
+            }
 
             $methodMap = [
                 'where' => ['null' => 'whereNull', 'notnull' => 'whereNotNull', 'in' => 'whereIn', 'between' => 'whereBetween', 'default' => 'where'],
-                'having' => ['null' => 'havingNull', 'notnull' => 'havingNotNull', 'in' => 'having', /* havingIn doesn't exist natively like whereIn, wait.. having() handles it sometimes, but we can just use havingRaw or assume it's simple */ 'between' => 'havingBetween', 'default' => 'having']
+                'having' => ['null' => 'havingNull', 'notnull' => 'havingNotNull', 'in' => 'having', 'between' => 'havingBetween', 'default' => 'having']
             ];
 
             $map = $methodMap[$type];
+
+            $value = $node->value;
+            if ($value !== null) {
+                if ($node->attribute->type === 'integer') {
+                    $value = is_array($value) ? array_map('intval', $value) : (int) $value;
+                } elseif ($node->attribute->type === 'float' || $node->attribute->type === 'double') {
+                    $value = is_array($value) ? array_map('floatval', $value) : (float) $value;
+                } elseif ($node->attribute->type === 'boolean') {
+                    $value = is_array($value) 
+                        ? array_map(fn($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN), $value) 
+                        : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                }
+            }
 
             if ($node->operator === 'is null') {
                 $query->{$map['null']}($col, $bool);
             } elseif ($node->operator === 'is not null') {
                 $query->{$map['notnull']}($col, $bool);
             } elseif ($node->operator === 'in') {
-                if ($type === 'where') $query->{$map['in']}($col, $node->value, $bool);
-                else $query->havingRaw("$col in (" . implode(',', array_map(fn($v) => "'$v'", $node->value)) . ")", [], $bool);
+                if ($type === 'where') $query->{$map['in']}($col, $value, $bool);
+                else {
+                    $colStr = (string) $col;
+                    $query->havingRaw("$colStr in (" . implode(',', array_map(fn($v) => "'$v'", (array)$value)) . ")", [], $bool);
+                }
             } elseif ($node->operator === 'between') {
-                $query->{$map['between']}($col, $node->value, $bool);
+                $query->{$map['between']}($col, (array)$value, $bool);
             } else {
-                $query->{$map['default']}($col, $node->operator, $node->value, $bool);
+                $query->{$map['default']}($col, $node->operator, $value, $bool);
             }
         }
     }

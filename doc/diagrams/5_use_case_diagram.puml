@@ -20,6 +20,8 @@ package "Dynamic Report Generator Package" {
   
   usecase "Discover Eloquent Relationships" as UC_Discover
   usecase "Generate SQL Query Builder" as UC_Generate
+  
+  usecase "Define Virtual Attribute" as UC_DefineVA
 }
 
 User --> UC_Execute
@@ -36,6 +38,7 @@ Admin --> UC_Delete
 Admin --> UC_Assign
 Admin --> UC_Unassign
 Admin --> UC_Audit
+Admin --> UC_DefineVA
 
 UC_Execute ..> UC_Generate : <<includes>>
 UC_Design ..> UC_Discover : <<includes>>

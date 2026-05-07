@@ -40,6 +40,17 @@ entity "users" as User {
   (Client Application Table)
 }
 
+entity "dynamic_virtual_attributes" as VirtualAttribute {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * name : varchar (e.g., 'total_order_value')
+  * base_model : varchar (e.g., 'App\\Models\\Order')
+  * sql_fragment : text
+  dependencies : json <<nullable>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
 SavedReport ||--o{ ReportLog : "has many"
 SavedReport ||--o{ ReportUserPivot : "has many (assigned users)"
 User ||--o{ ReportUserPivot : "assigned to"
