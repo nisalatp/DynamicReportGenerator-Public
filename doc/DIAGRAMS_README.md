@@ -186,3 +186,27 @@ $builder = VirtualAttributeBuilder::create($payload['name'])
     ->dependsOn($payload['dependencies'])
     ->register();
 ```
+
+---
+
+## Part 3: Academic Highlights & System Architecture Theory
+
+For an academic capstone defense, evaluators look for the application of Computer Science theory, algorithms, and recognized design patterns. Use the following concepts to supplement your UML diagrams:
+
+### 1. Applied Design Patterns (Gang of Four & Enterprise)
+The architecture rigorously employs several proven software design patterns, which are clearly visible in the `3_class_diagram.puml` and `7_package_diagram.puml`:
+- **Composite Pattern**: The Abstract Syntax Tree (AST) for filters (`FilterNode` interface) utilizes the Composite pattern. A `FilterGroup` contains an array of `FilterNode` children (which can be either `FilterLeaf` or another `FilterGroup`), allowing the engine to traverse infinitely nested `AND/OR` SQL conditions recursively.
+- **Builder / Fluent Interface Pattern**: Implemented in the `VirtualAttributeBuilder` to allow step-by-step chaining (e.g., `create()->forBaseModel()->withSqlFragment()->register()`), isolating the complexity of model creation from the controller.
+- **Singleton Pattern**: The `VirtualAttributeRegistry` is instantiated as a Singleton via the Laravel Service Provider. This ensures that the registry loads the raw SQL strings from the database only **once** per request lifecycle, eliminating N+1 query problems during report generation.
+- **Facade Pattern**: The `DynamicReport` Facade abstracts the complex instantiation of the `ReportMaker` engine, providing a clean, static interface for the host application to use (e.g., `DynamicReport::generate()`).
+- **Data Transfer Object (DTO)**: The entire `ReportRequest` acts as a strongly-typed DTO payload, separating the unpredictable shape of the HTTP request from the strict internal logic of the engine.
+
+### 2. Algorithm Analysis: Breadth-First Search (BFS)
+When presenting `6_activity_diagram.puml`, highlight the **BFS Algorithm** used for the Auto-Join capability.
+- **The Problem**: When a user selects columns from `Users` and `Orders`, the engine needs to know *how* to join them.
+- **The Solution**: The engine uses PHP Reflection to map all Eloquent relationships into a Graph network. It then runs a Breadth-First Search (`findShortestPath` method in `ReportMaker`) to find the shortest relational path between the base table and the target table, automatically generating the `JoinPlan` array. This is a classic application of Graph Theory.
+
+### 3. Database Architecture & Performance Optimization
+When presenting `2_erd.puml`, mention how the design optimizes for large datasets:
+- **Subquery Pushdown**: The Virtual Attribute system avoids processing data in PHP RAM. Instead of hydrating Eloquent models and running `->count()`, the system transpiles the logic into raw SQL Subqueries and pushes them down to the Database Engine, allowing MySQL/SQLite to execute aggregations at hardware speed.
+- **JSON Payload Storage**: The `dynamic_saved_reports` table leverages modern RDBMS JSON column capabilities to store the serialized AST, allowing the configuration to be completely schema-less while remaining robust.
