@@ -1,6 +1,7 @@
 {
     "name": "nisalatp/dynamicreportgenerator",
     "description": "Metadata-centric dynamic reporting engine with virtual attributes and privacy-aware masking",
+    "license": "MIT",
     "type": "library",
     "require": {
         "php": "^8.2",
