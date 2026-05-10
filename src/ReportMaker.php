@@ -26,6 +26,8 @@ use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Nisalatp\DynamicReportGenerator\Models\ReportLog;
 use Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportMaker
 {
@@ -62,7 +64,7 @@ class ReportMaker
         );
 
         if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates) || $whatUserWants->outerFilters !== null) {
-            return $this->buildOuterQuery(
+            $finalQuery = $this->buildOuterQuery(
                 $whatUserWants->baseModel,
                 $innerQuery,
                 $whatUserWants->groupBys,
@@ -70,9 +72,92 @@ class ReportMaker
                 $whatUserWants->outerFilters,
                 $whatUserWants->selectedAttributes
             );
+        } else {
+            $finalQuery = $innerQuery;
         }
 
-        return $innerQuery;
+        if (!empty($whatUserWants->sorts)) {
+            foreach ($whatUserWants->sorts as $sort) {
+                $colName = $sort->attribute->alias ?? $sort->attribute->column;
+                if (str_starts_with($colName, 'va:')) {
+                    $colName = substr($colName, 3);
+                }
+                $finalQuery->orderBy($colName, $sort->direction);
+            }
+        }
+
+        return $finalQuery;
+    }
+
+    /**
+     * Completeness: Generate a paginated report, protecting the host memory.
+     */
+    public function generatePaginated(ReportRequest $whatUserWants, int $perPage = 50): LengthAwarePaginator
+    {
+        return $this->generate($whatUserWants)->paginate($perPage);
+    }
+
+    /**
+     * Ease of Use: Securely stream a report to CSV without memory exhaustion.
+     */
+    public function exportToCsv(ReportRequest $whatUserWants, string $filename = 'report.csv'): StreamedResponse
+    {
+        $query = $this->generate($whatUserWants);
+        
+        return response()->streamDownload(function () use ($query) {
+            $handle = fopen('php://output', 'w');
+            $headersWritten = false;
+
+            $query->chunk(1000, function ($records) use ($handle, &$headersWritten) {
+                foreach ($records as $record) {
+                    $array = (array)$record;
+                    if (!$headersWritten) {
+                        fputcsv($handle, array_keys($array));
+                        $headersWritten = true;
+                    }
+                    fputcsv($handle, array_values($array));
+                }
+            });
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
+    }
+
+    /**
+     * Convert a Builder query to a raw SQL string with bindings for debugging.
+     */
+    public function toRawSql(Builder $query): string
+    {
+        $sql = $query->toSql();
+        $bindings = $query->getBindings();
+
+        foreach ($bindings as $binding) {
+            $value = is_numeric($binding) ? $binding : "'" . addslashes($binding) . "'";
+            $sql = preg_replace('/\?/', $value, $sql, 1);
+        }
+
+        return $sql;
+    }
+
+    /**
+     * Explain the Graph-Theory BFS Join Plan to the frontend.
+     */
+    public function explainJoinPlan(ReportRequest $whatUserWants): JoinPlan
+    {
+        $this->ensureModelAllowed($whatUserWants->baseModel);
+        
+        $targetModels = $whatUserWants->targetModels;
+        $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
+        
+        foreach ($targetModels as $model) {
+            $this->ensureModelAllowed($model);
+        }
+
+        $links = $this->discoverLinks();
+        return $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
     }
 
     private function extractVirtualAttributeDependencies(ReportRequest $request, array &$targetModels): void
@@ -252,6 +337,52 @@ class ReportMaker
             $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'deleteReport', 'message' => $e->getMessage()]);
             throw $e;
         }
+    }
+
+    /**
+     * Schema Discovery: Get all available reportable models.
+     *
+     * @return array Array of allowed model class names.
+     */
+    public function getAvailableModels(): array
+    {
+        return array_keys($this->allowedModels);
+    }
+
+    /**
+     * Schema Discovery: Get all attributes (physical and virtual) for a model.
+     *
+     * @param string $modelClass
+     * @return array Array of attribute names.
+     */
+    public function getModelAttributes(string $modelClass): array
+    {
+        $this->ensureModelAllowed($modelClass);
+        
+        $table = $this->allowedModels[$modelClass]->table;
+        $physicalCols = Schema::getColumnListing($table);
+
+        $virtualCols = [];
+        if ($this->vaRegistry) {
+            $virtualAttrs = $this->vaRegistry->getForModel($modelClass);
+            $virtualCols = $virtualAttrs->map(function($va) { return 'va:' . $va->name; })->toArray();
+        }
+
+        return array_merge($physicalCols, $virtualCols);
+    }
+
+    /**
+     * Schema Discovery: Get all discoverable relationships for a model.
+     *
+     * @param string $modelClass
+     * @return array Array of ModelLink objects detailing the relationships.
+     */
+    public function getModelRelationships(string $modelClass): array
+    {
+        $this->ensureModelAllowed($modelClass);
+        
+        $links = $this->discoverLinks();
+        return $links[$modelClass] ?? [];
     }
 
     private function getModelInfo(string $modelClass): ModelInfo

@@ -1,12 +1,22 @@
 <?php
 namespace Nisalatp\DynamicReportGenerator\Types;
+
+use InvalidArgumentException;
+
 readonly class Aggregate {
-    public function __construct(public Attribute $attribute, public string $function, public ?string $alias = null) {}
+    public const ALLOWED_FUNCTIONS = ['SUM', 'AVG', 'COUNT', 'MIN', 'MAX'];
+
+    public function __construct(public Attribute $attribute, public string $function, public ?string $alias = null) {
+        $upperFunc = strtoupper($function);
+        if (!in_array($upperFunc, self::ALLOWED_FUNCTIONS, true)) {
+            throw new InvalidArgumentException("Invalid aggregate function: {$function}. Allowed functions are: " . implode(', ', self::ALLOWED_FUNCTIONS));
+        }
+    }
 
     public function toArray(): array {
         return [
             'attribute' => $this->attribute->toArray(),
-            'function' => $this->function,
+            'function' => strtoupper($this->function),
             'alias' => $this->alias,
         ];
     }

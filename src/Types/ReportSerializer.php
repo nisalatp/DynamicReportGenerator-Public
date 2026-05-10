@@ -13,6 +13,7 @@ class ReportSerializer {
             'groupBys' => array_map(fn($gb) => $gb->toArray(), $request->groupBys),
             'aggregates' => array_map(fn($agg) => $agg->toArray(), $request->aggregates),
             'outerFilters' => $request->outerFilters ? $request->outerFilters->toArray() : null,
+            'sorts' => array_map(fn($sort) => $sort->toArray(), $request->sorts),
         ];
 
         return json_encode($data, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
@@ -36,7 +37,11 @@ class ReportSerializer {
                 $agg['function'], 
                 $agg['alias'] ?? null
             ), $data['aggregates'] ?? []),
-            outerFilters: isset($data['outerFilters']) ? $this->parseFilterNode($data['outerFilters']) : null
+            outerFilters: isset($data['outerFilters']) ? $this->parseFilterNode($data['outerFilters']) : null,
+            sorts: array_map(fn($sort) => new Sort(
+                $this->parseAttribute($sort['attribute']),
+                $sort['direction'] ?? 'ASC'
+            ), $data['sorts'] ?? [])
         );
     }
 

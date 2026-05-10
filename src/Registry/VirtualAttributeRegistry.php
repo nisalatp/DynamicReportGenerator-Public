@@ -12,4 +12,15 @@ class VirtualAttributeRegistry
             ->where('name', $name)
             ->first();
     }
+
+    /**
+     * Retrieve all Virtual Attributes for a given model.
+     *
+     * @param string $modelClass
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getForModel(string $modelClass)
+    {
+        return VirtualAttribute::where('base_model', $modelClass)->get();
+    }
 }
