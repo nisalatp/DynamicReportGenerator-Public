@@ -24,14 +24,18 @@ use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
 use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Nisalatp\DynamicReportGenerator\Models\ReportLog;
+use Nisalatp\DynamicReportGenerator\Models\RestrictedModel;
 use Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry;
 use Illuminate\Database\Eloquent\Collection;
+use Symfony\Component\Finder\Finder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportMaker
 {
-    private array $allowedModels = [];
+    private ?array $allowedModels = null;
+    private ?array $allApplicationModels = null;
+    private ?array $restrictedModels = null;
 
     /**
      * In-memory cache for the bidirectional link graph.
@@ -39,10 +43,23 @@ class ReportMaker
      */
     private ?array $cachedLinks = null;
 
-    public function __construct(array $allowedModels, private ?VirtualAttributeRegistry $vaRegistry = null)
+    public function __construct(private ?VirtualAttributeRegistry $vaRegistry = null)
     {
-        foreach ($allowedModels as $modelClass) {
-            if (class_exists($modelClass) && is_subclass_of($modelClass, Model::class)) {
+        // Initialization is now lazy-loaded via ensureModelsLoaded()
+    }
+
+    private function ensureModelsLoaded(): void
+    {
+        if ($this->allowedModels !== null) {
+            return;
+        }
+
+        $this->allowedModels = [];
+        $allModels = $this->getAllApplicationModels();
+        $restricted = $this->getRestrictedModels();
+
+        foreach ($allModels as $modelClass) {
+            if (!in_array($modelClass, $restricted)) {
                 $this->allowedModels[$modelClass] = $this->getModelInfo($modelClass);
             }
         }
@@ -50,6 +67,7 @@ class ReportMaker
 
     public function generate(ReportRequest $whatUserWants): Builder
     {
+        $this->ensureModelsLoaded();
         $this->ensureModelAllowed($whatUserWants->baseModel);
         
         $targetModels = $whatUserWants->targetModels;
@@ -344,13 +362,145 @@ class ReportMaker
     }
 
     /**
-     * Schema Discovery: Get all available reportable models.
+     * Schema Discovery: Get all available reportable models (All models MINUS restricted models).
      *
      * @return array Array of allowed model class names.
      */
     public function getAvailableModels(): array
     {
+        $this->ensureModelsLoaded();
         return array_keys($this->allowedModels);
+    }
+
+    /**
+     * Schema Discovery: Discover and return ALL Eloquent models in the application.
+     *
+     * @return array Array of all model class names.
+     */
+    public function getAllApplicationModels(): array
+    {
+        if ($this->allApplicationModels !== null) {
+            return $this->allApplicationModels;
+        }
+
+        $models = [];
+        $modelPaths = [app_path(), app_path('Models')];
+        
+        $finder = new Finder();
+        $finder->files()->name('*.php')->in(array_filter($modelPaths, 'is_dir'));
+
+        foreach ($finder as $file) {
+            $path = $file->getRealPath();
+            // A simple heuristic to find namespace and class name without regexing everything,
+            // or simply use token_get_all. We'll use a reliable token extraction:
+            $class = $this->extractClassFromFile($path);
+            if ($class && class_exists($class) && is_subclass_of($class, Model::class)) {
+                // Ensure it's not abstract or interface
+                $reflection = new ReflectionClass($class);
+                if (!$reflection->isAbstract() && !$reflection->isInterface()) {
+                    $models[] = $class;
+                }
+            }
+        }
+
+        $this->allApplicationModels = array_unique($models);
+        return $this->allApplicationModels;
+    }
+
+    /**
+     * Schema Discovery: Get the list of explicitly restricted model classes.
+     *
+     * @return array Array of restricted model class names.
+     */
+    public function getRestrictedModels(): array
+    {
+        if ($this->restrictedModels !== null) {
+            return $this->restrictedModels;
+        }
+        
+        try {
+            $this->restrictedModels = RestrictedModel::pluck('model_class')->toArray();
+        } catch (\Exception $e) {
+            // Fallback if table doesn't exist yet (e.g., during testing or before migration)
+            $this->restrictedModels = [];
+        }
+
+        return $this->restrictedModels;
+    }
+
+    /**
+     * Schema Discovery: Explicitly restrict a model from being used in the report generator.
+     *
+     * @param string $modelClass The fully qualified class name of the model to restrict.
+     * @param int|null $actionByUserId Optional user ID for auditing.
+     * @return void
+     */
+    public function restrictModel(string $modelClass, ?int $actionByUserId = null): void
+    {
+        RestrictedModel::firstOrCreate([
+            'model_class' => $modelClass,
+        ], [
+            'restricted_by' => $actionByUserId,
+        ]);
+
+        // Invalidate caches
+        $this->restrictedModels = null;
+        $this->allowedModels = null;
+        $this->cachedLinks = null;
+    }
+
+    /**
+     * Schema Discovery: Remove a restriction from a model.
+     *
+     * @param string $modelClass The fully qualified class name of the model to unrestrict.
+     * @return void
+     */
+    public function unrestrictModel(string $modelClass): void
+    {
+        RestrictedModel::where('model_class', $modelClass)->delete();
+
+        // Invalidate caches
+        $this->restrictedModels = null;
+        $this->allowedModels = null;
+        $this->cachedLinks = null;
+    }
+
+    private function extractClassFromFile(string $path): ?string
+    {
+        $contents = file_get_contents($path);
+        $namespace = '';
+        $class = '';
+
+        $tokens = token_get_all($contents);
+        $count = count($tokens);
+
+        for ($i = 0; $i < $count; $i++) {
+            if ($tokens[$i][0] === T_NAMESPACE) {
+                for ($j = $i + 1; $j < $count; $j++) {
+                    if ($tokens[$j] === ';') break;
+                    if (is_array($tokens[$j]) && in_array($tokens[$j][0], [T_STRING, T_NAME_QUALIFIED])) {
+                        $namespace .= $tokens[$j][1];
+                    }
+                }
+            }
+
+            if ($tokens[$i][0] === T_CLASS) {
+                for ($j = $i + 1; $j < $count; $j++) {
+                    if ($tokens[$j] === '{') break;
+                    if (is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
+                        $class = $tokens[$j][1];
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        if ($class) {
+            return $namespace ? $namespace . '\\' . $class : $class;
+        }
+
+        return null;
     }
 
     /**
@@ -361,6 +511,7 @@ class ReportMaker
      */
     public function getModelAttributes(string $modelClass): array
     {
+        $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
         
         $table = $this->allowedModels[$modelClass]->table;
@@ -383,6 +534,7 @@ class ReportMaker
      */
     public function getModelRelationships(string $modelClass): array
     {
+        $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
         
         $links = $this->discoverLinks();
@@ -401,6 +553,7 @@ class ReportMaker
      */
     public function getConnectedModels(string $modelClass): array
     {
+        $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
         $links = $this->discoverLinks();
         return $links[$modelClass] ?? [];

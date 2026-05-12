@@ -18,7 +18,6 @@ class DynamicReportGeneratorServiceProvider extends ServiceProvider
 
         $this->app->singleton(ReportMaker::class, function ($app) {
             return new ReportMaker(
-                $app['config']->get('dynamicreportgenerator.reportable_models', []),
                 new \Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry()
             );
         });
