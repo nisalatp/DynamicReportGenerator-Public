@@ -21,11 +21,13 @@ use Nisalatp\DynamicReportGenerator\Types\JoinStep;
 use Nisalatp\DynamicReportGenerator\Types\FilterNode;
 use Nisalatp\DynamicReportGenerator\Types\FilterGroup;
 use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
-use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
+use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerSecurityException;
 use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Nisalatp\DynamicReportGenerator\Models\ReportLog;
 use Nisalatp\DynamicReportGenerator\Models\RestrictedModel;
+use Nisalatp\DynamicReportGenerator\Models\AttributeRestriction;
 use Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry;
+use Nisalatp\DynamicReportGenerator\Contracts\DynamicReportSubject;
 use Illuminate\Database\Eloquent\Collection;
 use Symfony\Component\Finder\Finder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -36,6 +38,7 @@ class ReportMaker
     private ?array $allowedModels = null;
     private ?array $allApplicationModels = null;
     private ?array $restrictedModels = null;
+    private array $resolvedRestrictions = [];
 
     /**
      * In-memory cache for the bidirectional link graph.
@@ -65,10 +68,12 @@ class ReportMaker
         }
     }
 
-    public function generate(ReportRequest $whatUserWants): Builder
+    public function generate(ReportRequest $whatUserWants, ?array $subjects = null): Builder
     {
         $this->ensureModelsLoaded();
         $this->ensureModelAllowed($whatUserWants->baseModel);
+        $this->resolveAttributeRestrictions($subjects);
+        $this->validateSecurity($whatUserWants);
         
         $targetModels = $whatUserWants->targetModels;
         $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
@@ -116,17 +121,17 @@ class ReportMaker
     /**
      * Completeness: Generate a paginated report, protecting the host memory.
      */
-    public function generatePaginated(ReportRequest $whatUserWants, int $perPage = 50): LengthAwarePaginator
+    public function generatePaginated(ReportRequest $whatUserWants, int $perPage = 50, ?array $subjects = null): LengthAwarePaginator
     {
-        return $this->generate($whatUserWants)->paginate($perPage);
+        return $this->generate($whatUserWants, $subjects)->paginate($perPage);
     }
 
     /**
      * Ease of Use: Securely stream a report to CSV without memory exhaustion.
      */
-    public function exportToCsv(ReportRequest $whatUserWants, string $filename = 'report.csv'): StreamedResponse
+    public function exportToCsv(ReportRequest $whatUserWants, string $filename = 'report.csv', ?array $subjects = null): StreamedResponse
     {
-        $query = $this->generate($whatUserWants);
+        $query = $this->generate($whatUserWants, $subjects);
         
         return response()->streamDownload(function () use ($query) {
             $handle = fopen('php://output', 'w');
@@ -504,7 +509,104 @@ class ReportMaker
     }
 
     /**
-     * Schema Discovery: Get all attributes (physical and virtual) for a model.
+     * Resolve all attribute restrictions for the given execution subjects.
+     */
+    private function resolveAttributeRestrictions(?array $subjects): void
+    {
+        $this->resolvedRestrictions = [];
+        
+        if ($subjects === null && function_exists('auth') && auth()->check()) {
+            $user = auth()->user();
+            if ($user instanceof DynamicReportSubject) {
+                $subjects = $user->getDynamicReportSubjects();
+            } else {
+                $subjects = [$user];
+            }
+        }
+        
+        if (empty($subjects)) {
+            return;
+        }
+
+        $query = AttributeRestriction::query();
+        $query->where(function($q) use ($subjects) {
+            foreach ($subjects as $subject) {
+                if ($subject instanceof Model) {
+                    $q->orWhere(function($sq) use ($subject) {
+                        $sq->where('subject_type', get_class($subject))
+                           ->where('subject_id', $subject->getKey());
+                    });
+                }
+            }
+        });
+
+        try {
+            $restrictions = $query->get();
+            foreach ($restrictions as $r) {
+                $key = $r->model_class . '.' . $r->attribute;
+                // Blocked takes precedence over masked
+                if (!isset($this->resolvedRestrictions[$key]) || $this->resolvedRestrictions[$key] !== 'blocked') {
+                    $this->resolvedRestrictions[$key] = $r->restriction_type;
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignore if table doesn't exist yet
+        }
+    }
+
+    private function getRestrictionType(string $modelClass, string $attribute, bool $isVirtual = false): ?string
+    {
+        if ($isVirtual && !str_starts_with($attribute, 'va:')) {
+            $attribute = 'va:' . $attribute;
+        }
+        return $this->resolvedRestrictions[$modelClass . '.' . $attribute] ?? null;
+    }
+
+    private function extractAttributesFromFilter(FilterNode $node): array
+    {
+        if ($node instanceof FilterLeaf) {
+            return [$node->attribute];
+        }
+        if ($node instanceof FilterGroup) {
+            $attrs = [];
+            foreach ($node->children as $child) {
+                $attrs = array_merge($attrs, $this->extractAttributesFromFilter($child));
+            }
+            return $attrs;
+        }
+        return [];
+    }
+
+    private function validateSecurity(ReportRequest $req): void
+    {
+        $checkBlocked = function(array $attributes, string $context) {
+            foreach ($attributes as $attr) {
+                if ($this->getRestrictionType($attr->modelClass, $attr->column, $attr->isVirtual) === 'blocked') {
+                    throw new ReportMakerSecurityException("Attribute {$attr->modelClass}.{$attr->column} is BLOCKED and cannot be used in {$context} calculations.");
+                }
+            }
+        };
+
+        if ($req->innerFilters) {
+            $checkBlocked($this->extractAttributesFromFilter($req->innerFilters), 'filters');
+        }
+        if ($req->outerFilters) {
+            $checkBlocked($this->extractAttributesFromFilter($req->outerFilters), 'filters');
+        }
+        if ($req->groupBys) {
+            $checkBlocked($req->groupBys, 'group bys');
+        }
+        if ($req->aggregates) {
+            $checkBlocked($req->aggregates, 'aggregates');
+        }
+        if ($req->sorts) {
+            $sortAttrs = array_map(fn($s) => $s->attribute, $req->sorts);
+            $checkBlocked($sortAttrs, 'sorts');
+        }
+    }
+
+    /**
+     * Schema Discovery: Get all attributes (physical and virtual) for a model, excluding blocked ones.
      *
      * @param string $modelClass
      * @return array Array of attribute names.
@@ -523,7 +625,15 @@ class ReportMaker
             $virtualCols = $virtualAttrs->map(function($va) { return 'va:' . $va->name; })->toArray();
         }
 
-        return array_merge($physicalCols, $virtualCols);
+        $allCols = array_merge($physicalCols, $virtualCols);
+        
+        // Exclude blocked attributes from schema discovery so they don't even show up in UIs
+        // We load restrictions for the current active user here.
+        $this->resolveAttributeRestrictions(null); 
+        
+        return array_values(array_filter($allCols, function($col) use ($modelClass) {
+            return $this->getRestrictionType($modelClass, $col, str_starts_with($col, 'va:')) !== 'blocked';
+        }));
     }
 
     /**
@@ -862,7 +972,7 @@ class ReportMaker
         return null;
     }
 
-    private function buildInnerQuery(string $base, JoinPlan $plan, array $selects, ?FilterNode $filters): Builder
+    private function buildInnerQuery(string $base, JoinPlan $plan, array $selects, ?FilterNode $filters, ?array $subjects = null): Builder
     {
         $baseInstance = new $base();
         $query = DB::table($baseInstance->getTable() . ' as t0');
@@ -890,6 +1000,15 @@ class ReportMaker
             $isVirtual = $attr->isVirtual || str_starts_with($attr->column, 'va:');
             $finalAlias = $attr->alias ?? $attr->column;
             
+            $restriction = $this->getRestrictionType($attr->modelClass, $attr->column, $isVirtual);
+            if ($restriction === 'blocked') {
+                $selectColumns[] = DB::raw("'###' as " . $query->getGrammar()->wrap($finalAlias));
+                continue;
+            } elseif ($restriction === 'masked') {
+                $selectColumns[] = DB::raw("'***' as " . $query->getGrammar()->wrap($finalAlias));
+                continue;
+            }
+
             if ($isVirtual && $this->vaRegistry) {
                 $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
                 $va = $this->vaRegistry->findByName($base, $name);
@@ -1023,5 +1142,47 @@ class ReportMaker
                 $query->{$map['default']}($col, $node->operator, $value, $bool);
             }
         }
+    }
+
+    /**
+     * ALS Management: Restrict an attribute for a specific subject.
+     */
+    public function restrictAttribute(string $modelClass, string $attribute, \Illuminate\Database\Eloquent\Model $subject, string $type = 'masked'): void
+    {
+        AttributeRestriction::updateOrCreate([
+            'model_class' => $modelClass,
+            'attribute' => $attribute,
+            'subject_type' => get_class($subject),
+            'subject_id' => $subject->getKey(),
+        ], [
+            'restriction_type' => $type,
+            'created_by' => function_exists('auth') && auth()->check() ? auth()->id() : null,
+        ]);
+        $this->resolvedRestrictions = []; // clear cache
+    }
+
+    /**
+     * ALS Management: Remove a restriction.
+     */
+    public function unrestrictAttribute(string $modelClass, string $attribute, \Illuminate\Database\Eloquent\Model $subject): void
+    {
+        AttributeRestriction::where([
+            'model_class' => $modelClass,
+            'attribute' => $attribute,
+            'subject_type' => get_class($subject),
+            'subject_id' => $subject->getKey(),
+        ])->delete();
+        $this->resolvedRestrictions = [];
+    }
+
+    /**
+     * ALS Management: Get all restrictions for a subject.
+     */
+    public function getAttributeRestrictions(\Illuminate\Database\Eloquent\Model $subject): array
+    {
+        return AttributeRestriction::where('subject_type', get_class($subject))
+            ->where('subject_id', $subject->getKey())
+            ->get()
+            ->toArray();
     }
 }

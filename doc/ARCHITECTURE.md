@@ -112,18 +112,29 @@ To solve this, the `ReportMaker` engine acts as a **Schema Discovery Broker**.
 - **Intelligent Merging**: When an external application requests the attributes for the `Order` model, the engine queries the physical database schema *and* the `VirtualAttributeRegistry`. It merges these together, prefixing Virtual Attributes with `va:`, and returns a unified list.
 - **Why?**: This completely encapsulates the reflection logic. Any frontend application, regardless of language or framework, can simply query the engine to receive a perfect, 1D abstraction of the physical schema and the 3D relational graph. The bidirectional discovery ensures that the frontend always sees complete connectivity information, even when models only declare one side of a relationship.
 
+## 7. Data Governance & Attribute Level Security (ALS)
+
+The engine provides a built-in Attribute-Level Security module to prevent unauthorized access to specific columns (or Virtual Attributes) directly at the SQL compilation level. This is decoupled from the host application's specific Role/User models via Polymorphic relations.
+
+### 7.1 Security States
+- **Masked (`***`)**: The attribute is allowed in backend query logic (`WHERE`, `GROUP BY`, `HAVING`) but is replaced with `***` in the `SELECT` output, preventing data leakage while allowing aggregate logic.
+- **Blocked (`###`)**: The attribute is strictly prohibited. If it exists in the AST (`filters`, `groups`, `aggregates`, `sorts`), the compiler throws a `ReportMakerSecurityException`. If it is merely selected, its output is replaced with `###`. Blocked attributes are entirely hidden from the Schema Discovery APIs.
+
+### 7.2 Subject Resolution
+Host applications can implement the `Nisalatp\DynamicReportGenerator\Contracts\DynamicReportSubject` interface on their authentication models (e.g., `User`). The `getDynamicReportSubjects()` method allows the host to return an array of subjects (e.g., the User and their Roles) so the engine can aggregate all applicable restrictions for the current execution context.
+
 ---
 
-## 7. Security & Memory Protection Abstractions
+## 8. Security & Memory Protection Abstractions
 
 To ensure the engine is fully enterprise-ready, it implements strict boundaries to prevent SQL injection and Out-Of-Memory (OOM) fatal errors.
 
-### 7.1 Strict Aggregate Validation (SQL Injection Prevention)
+### 8.1 Strict Aggregate Validation (SQL Injection Prevention)
 When processing aggregated calculations (e.g., `SUM`, `COUNT`), the `Aggregate` DTO acts as a rigid security perimeter.
 - **The Threat**: If the `function` string was passed directly to `DB::raw()`, a malicious user could intercept the frontend JSON payload and inject a subquery like `SUM); DROP TABLE users; --`.
 - **The Solution**: The `Aggregate` DTO contains an immutable `ALLOWED_FUNCTIONS` whitelist (`['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']`). The DTO's constructor strictly validates the incoming string against this whitelist, completely neutralizing SQL injection vectors before the compilation phase even begins.
 
-### 7.2 RAM Crash Prevention via Pagination and Streaming
+### 8.2 RAM Crash Prevention via Pagination and Streaming
 Host applications inherently lack the context to know if a dynamically generated report will evaluate to 50 rows or 5,000,000 rows. If an application blindly calls `->get()` on a massive dataset, the PHP process will crash due to memory exhaustion.
 - **Paginated Generation**: The engine abstracts execution via `DynamicReport::generatePaginated($request, 50)`. This forces the host application into an O(1) memory complexity boundary, ensuring only exactly 50 rows are ever loaded into RAM simultaneously.
 - **Database Chunking & CSV Streaming**: To facilitate massive data exports, the engine provides `DynamicReport::exportToCsv($request)`. Rather than buffering the query results into a PHP string, the engine leverages Laravel's `chunk()` method combined with a `StreamedResponse`. This iterates through the database connection in small blocks and pipes the bytes directly over the HTTP connection to the user's browser, enabling the secure export of gigabyte-scale CSV files without impacting backend server stability.

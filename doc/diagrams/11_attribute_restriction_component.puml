@@ -1,0 +1,44 @@
+@startuml 11_attribute_restriction_component
+title Attribute Level Security (ALS) Component Diagram
+
+skinparam componentStyle uml2
+
+package "Host Laravel Application" {
+    [User Model] <<Eloquent>>
+    [Role Model] <<Eloquent>>
+    
+    interface "DynamicReportSubject" as IDRS
+    
+    [User Model] .up.|> IDRS : implements
+    note right of [User Model]
+      getDynamicReportSubjects()
+      returns [User, Role1, Role2]
+    end note
+}
+
+package "Nisalatp\\DynamicReportGenerator" {
+    
+    component "ReportMaker (Engine)" as Engine
+    component "Security Validator" as Validator
+    
+    [AttributeRestriction] <<Eloquent Model>>
+    database "dynamic_attribute_restrictions" as DB_Table
+    
+    [AttributeRestriction] ..> DB_Table : reads/writes
+}
+
+[User Model] --> Engine : Executing Context (auth()->user())
+
+Engine --> IDRS : Resolves active subjects
+Engine --> [AttributeRestriction] : Queries rules for active subjects
+
+Engine *-- Validator : delegates AST checks
+Validator --> Engine : throws ReportMakerSecurityException\n(if blocked attribute used in calculations)
+
+note bottom of Engine
+  Builds SQL Builder:
+  - Masks output if rule is 'masked'
+  - Injects '###' if rule is 'blocked'
+end note
+
+@enduml

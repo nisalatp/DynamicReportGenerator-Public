@@ -59,6 +59,13 @@ Manages ownership and sharing of generated reports.
 - **FR 3.5.1 Automated Logging**: Every significant lifecycle event (`created`, `updated`, `executed`, `assigned`, `unassigned`, `deleted`, `error`) is automatically recorded in the `dynamic_report_logs` table.
 - **FR 3.5.2 Error Tracing**: Failed executions automatically log the exception message and stack trace for administrator review.
 
+### 3.6 Data Governance & Security
+Maintains a strict, polymorphic Attribute-Level Security (ALS) firewall embedded directly inside the SQL compiler.
+- **FR 3.6.1 Dynamic Subject Resolution**: Supports polymorphic security rules assigned to any host entity (Users, Roles). Checks `auth()->user()` or custom `DynamicReportSubject` interface implementations to aggregate active rules dynamically.
+- **FR 3.6.2 Masked Attributes (`***`)**: Restricts the viewing of sensitive columns. If a user selects a masked attribute, the engine returns `***`. The attribute remains fully accessible for backend calculations (`WHERE`, `GROUP BY`).
+- **FR 3.6.3 Blocked Attributes (`###`)**: Strictly prohibits use. If detected in `filters`, `aggregations`, or `groupBys`, the engine halts execution and throws a `ReportMakerSecurityException`. Blocked columns are completely excluded from Schema Discovery (`getModelAttributes()`).
+- **FR 3.6.4 Dynamic Model Discovery & Restriction**: Discovers all active Eloquent models automatically and supports explicit whole-model exclusions via the `dynamic_restricted_models` table.
+
 ---
 
 ## 4. Non-Functional Requirements

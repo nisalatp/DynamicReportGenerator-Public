@@ -1,0 +1,40 @@
+@startuml 9_attribute_security_state
+title Attribute Security State Machine
+
+skinparam backgroundColor #FFFFFF
+skinparam StateBackgroundColor #F9F9F9
+skinparam StateBorderColor #333333
+
+[*] --> Unrestricted : Discovered by Engine
+
+state Unrestricted {
+    Unrestricted : Default Schema State
+    Unrestricted : Fully Accessible
+}
+
+state Masked {
+    Masked : Restricted in Selects (***)
+    Masked : Accessible in Filters/Groups
+}
+
+state Blocked {
+    Blocked : Excised from Schema
+    Blocked : Calculations Throw Exception
+    Blocked : Selects return ###
+}
+
+Unrestricted --> Masked : restrictAttribute('masked')
+Unrestricted --> Blocked : restrictAttribute('blocked')
+
+Masked --> Blocked : restrictAttribute('blocked')
+note on link
+  Blocked policy overrides Masked
+  if multiple conflicting rules exist
+  for the active Subject.
+end note
+
+Blocked --> Masked : restrictAttribute('masked')
+Masked --> Unrestricted : unrestrictAttribute()
+Blocked --> Unrestricted : unrestrictAttribute()
+
+@enduml

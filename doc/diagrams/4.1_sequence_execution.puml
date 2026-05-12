@@ -33,8 +33,14 @@ VARegistry --> Maker : VirtualAttribute Model
 Maker -> Maker : Merge Dependencies into Target Models
 deactivate Maker
 
-Maker -> Maker : generate(ReportRequest)
+Maker -> Maker : generate(ReportRequest, subjects)
 activate Maker
+Maker -> Maker : resolveAttributeRestrictions(subjects)
+Maker -> Maker : validateSecurity(ReportRequest)
+note right
+  Throws ReportMakerSecurityException
+  if blocked attributes are in calculations
+end note
 Maker -> Maker : discoverLinks()
 note right
   Phase 1: getForwardRelations()
@@ -50,6 +56,11 @@ end note
 Maker -> Maker : buildInnerQuery()
 Maker -> VARegistry : Resolve VA SQL Fragments
 VARegistry --> Maker : Raw Subquery Strings
+Maker -> Maker : Intercept Blocked/Masked attributes
+note right
+  Replaces blocked SELECTs with '###'
+  Replaces masked SELECTs with '***'
+end note
 Maker -> Maker : buildOuterQuery()
 Maker -> Maker : Apply Sorts (ORDER BY)
 Maker --> Maker : Query Builder

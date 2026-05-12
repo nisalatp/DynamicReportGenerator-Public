@@ -25,8 +25,7 @@ activate Facade
 Facade -> Engine : getAvailableModels()
 activate Engine
 
-Engine --> Facade : array ["User", "Order", "Product"]
-deactivate Engine
+Engine -> Engine : getAllApplicationModels()\nEngine -> Engine : getRestrictedModels()\nnote right of Engine\n  Subtracts restricted models\n  from all discovered models\nend note\nEngine --> Facade : array ["User", "Order", "Product"]\ndeactivate Engine
 
 Facade --> Controller : models array
 deactivate Facade
@@ -62,6 +61,12 @@ deactivate VA
 note over Engine
   Engine intelligently prefixes VAs with "va:"
   and merges them with physical columns.
+end note
+
+Engine -> Engine : resolveAttributeRestrictions()
+note right of Engine
+  Filters out any attributes marked as 'Blocked'
+  for the current execution Subject.
 end note
 
 Engine --> Facade : ["id", "amount", ..., "va:total_revenue"]

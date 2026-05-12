@@ -22,6 +22,9 @@ package "Dynamic Report Generator Package" {
   usecase "Generate SQL Query Builder" as UC_Generate
   
   usecase "Define Virtual Attribute" as UC_DefineVA
+  
+  usecase "Manage Restricted Models" as UC_RestrictModel
+  usecase "Manage Attribute Security (ALS)" as UC_RestrictAttr
 }
 
 User --> UC_Execute
@@ -39,6 +42,8 @@ Admin --> UC_Assign
 Admin --> UC_Unassign
 Admin --> UC_Audit
 Admin --> UC_DefineVA
+Admin --> UC_RestrictModel
+Admin --> UC_RestrictAttr
 
 UC_Execute ..> UC_Generate : <<includes>>
 UC_Design ..> UC_Discover : <<includes>>

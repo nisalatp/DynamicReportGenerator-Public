@@ -20,7 +20,18 @@ A critical evaluation metric for this project was its memory footprint when gene
 - **Naive Approach (O(N) Memory)**: If the system had hydrated Eloquent models (e.g., fetching 10,000 `User` records and looping through them in PHP to count related `Orders`), the server's RAM usage would scale linearly (O(N)) with the dataset, eventually causing a fatal Out-Of-Memory error.
 - **Optimized Approach (O(1) Memory)**: By implementing Virtual Attributes via **Subquery Pushdown**, the engine transpiles the aggregation into a raw SQL fragment (e.g., `SELECT COUNT(...)`). The database engine (MySQL/SQLite) performs the calculation in optimized C-code at the hardware level. Consequently, the PHP application only receives a single scalar value per row, maintaining a flat O(1) memory footprint regardless of whether the database processes 100 or 1,000,000 records.
 
-## 4.5 Developer Experience (DX) & Universal Frontend Integration
+## 4.5 Security Evaluation: Attribute Level Security (ALS)
+A standalone CLI test suite (`test_attribute_security.php`) was executed to mathematically prove the robustness of the Data Governance module:
+- **Masking Isolation**: Tests confirmed that setting an attribute to `masked` successfully intercepted the `SELECT` output (replacing it with `***`), while concurrently proving the attribute remained completely unhindered when utilized inside `WHERE` (filter) clauses. 
+- **Blocking Prohibition**: Setting an attribute to `blocked` correctly triggered the `ReportMakerSecurityException` during the AST compilation phase if the attribute was detected in any calculation arrays (filters, group-bys, or sorts), definitively preventing data leakage via inference. The `###` literal fallback successfully executed if the blocked attribute was merely selected.
+- **Dynamic Subject Polling**: The test proved the polymorphic relations resolved successfully, aggregating rules bound directly to the specified executing entity.
+- **Dynamic Model Graph Recomputation**: Evaluated the cascade effect of restricting an entire model (as mapped in **Diagram 10: Dynamic Model Restriction Sequence**). 
+
+  ![Diagram 10: Dynamic Model Restriction Sequence](./diagrams/10_model_restriction_sequence.puml)
+
+  The engine correctly flushed its `allowedModels` and `cachedLinks` from memory, forcing a re-computation of the Bidirectional BFS Graph on the subsequent request, effectively amputating the restricted model from the available relationship network.
+
+## 4.6 Developer Experience (DX) & Universal Frontend Integration
 A core tenant of the Dynamic Report Generator is its commitment to an exceptional Developer Experience. To prove the absolute frontend-independence of the JSON AST architecture, an exhaustive suite of practical integration documentation was built and evaluated.
 
 The core package API was successfully integrated, tested, and documented across **four major frontend ecosystems**:

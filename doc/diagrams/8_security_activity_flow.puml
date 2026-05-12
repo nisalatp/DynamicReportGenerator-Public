@@ -1,0 +1,58 @@
+@startuml 8_security_activity_flow
+title Security Activity Flow (AST Validation)
+
+skinparam backgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #F9F9F9
+skinparam ActivityBorderColor #333333
+
+start
+
+:Receive ReportRequest (AST);
+:Identify Execution Subjects (auth()->user());
+
+:Query AttributeRestriction Table
+for Subjects;
+note right: Merges rules from User & Roles
+
+:Extract all Attributes from AST
+(Filters, Selects, Groups, Sorts, Aggregates);
+
+partition "AST Validation Loop" {
+    while (More attributes to check?) is (yes)
+        :Fetch Attribute Rule;
+        
+        if (Is Attribute Blocked?) then (yes)
+            if (Used in Filters/Groups/Sorts/Aggregates?) then (yes)
+                #FFCCCC:Throw ReportMakerSecurityException;
+                note right: Immediate Execution Halt
+                stop
+            else (no - Only in Selects)
+                :Flag for '###' Injection;
+            endif
+        else (no)
+            if (Is Attribute Masked?) then (yes)
+                if (Used in Filters/Groups/Sorts/Aggregates?) then (yes)
+                    :Allow Calculation;
+                else (no - Only in Selects)
+                    :Flag for '***' Injection;
+                endif
+            else (no)
+                :Allow Normal Execution;
+            endif
+        endif
+    endwhile (no)
+}
+
+:Generate SQL Query Builder;
+
+partition "SQL Construction" {
+    :Build INNER Query;
+    note right: Applies ### and *** injections to SELECTs
+    
+    :Build OUTER Query (Aggregations);
+}
+
+:Return QueryBuilder / Stream CSV;
+
+stop
+@enduml

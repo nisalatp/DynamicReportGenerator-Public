@@ -1,0 +1,78 @@
+@startuml 10_model_restriction_sequence
+title Dynamic Model Restriction Sequence
+
+actor Admin
+participant "Host Application\n(Controller)" as Controller
+participant "DynamicReport\n(Facade)" as Facade
+participant "ReportMaker\n(Singleton)" as Engine
+database "Database\n(dynamic_restricted_models)" as DB
+
+Admin -> Controller : POST /api/models/restrict
+activate Controller
+
+Controller -> Facade : DynamicReport::restrictModel('App\\Models\\Salary')
+activate Facade
+
+Facade -> Engine : restrictModel('App\\Models\\Salary')
+activate Engine
+
+Engine -> DB : firstOrCreate(['model_class' => 'App\\Models\\Salary'])
+activate DB
+DB --> Engine : RestrictedModel Instance
+deactivate DB
+
+note over Engine
+  Invalidate In-Memory Caches:
+  - allowedModels = null
+  - restrictedModels = null
+  - cachedLinks = null
+end note
+
+Engine --> Facade : void
+deactivate Engine
+
+Facade --> Controller : void
+deactivate Facade
+
+Controller --> Admin : HTTP 200 OK
+deactivate Controller
+
+== Next Schema Request (e.g. Frontend loads builder) ==
+
+actor User
+User -> Controller : GET /api/schema/models
+activate Controller
+
+Controller -> Facade : getAvailableModels()
+activate Facade
+
+Facade -> Engine : getAvailableModels()
+activate Engine
+
+Engine -> Engine : ensureModelsLoaded()
+activate Engine
+
+Engine -> DB : pluck('model_class') from RestrictedModel
+activate DB
+DB --> Engine : ['App\\Models\\Salary']
+deactivate DB
+
+note over Engine
+  System re-discovers all models via Finder,
+  subtracts the Restricted Models,
+  and builds a fresh Allowed Models array.
+end note
+
+Engine --> Engine : Re-computed Models
+deactivate Engine
+
+Engine --> Facade : ['User', 'Order'] (Excludes Salary)
+deactivate Engine
+
+Facade --> Controller : Array
+deactivate Facade
+
+Controller --> User : JSON Response
+deactivate Controller
+
+@enduml

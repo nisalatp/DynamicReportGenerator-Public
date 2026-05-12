@@ -4,13 +4,24 @@ title Dynamic Report Generator - Class Diagram
 package "Nisalatp\\DynamicReportGenerator" {
 
     class ReportMaker {
-        - allowedModels: array
+        - allowedModels: array|null
+        - allApplicationModels: array|null
+        - restrictedModels: array|null
+        - resolvedRestrictions: array
         - cachedLinks: array|null
-        + generate(request: ReportRequest): Builder
-        + generatePaginated(request: ReportRequest, perPage: int): LengthAwarePaginator
-        + exportToCsv(request: ReportRequest, filename: string): StreamedResponse
+        + generate(request: ReportRequest, subjects: array|null): Builder
+        + generatePaginated(request: ReportRequest, perPage: int, subjects: array|null): LengthAwarePaginator
+        + exportToCsv(request: ReportRequest, filename: string, subjects: array|null): StreamedResponse
         + toRawSql(query: Builder): string
         + explainJoinPlan(request: ReportRequest): JoinPlan
+        + getAvailableModels(): array
+        + getAllApplicationModels(): array
+        + getRestrictedModels(): array
+        + restrictModel(modelClass: string, userId: int|null): void
+        + unrestrictModel(modelClass: string): void
+        + restrictAttribute(modelClass: string, attribute: string, subject: Model, type: string): void
+        + unrestrictAttribute(modelClass: string, attribute: string, subject: Model): void
+        + getAttributeRestrictions(subject: Model): array
         + getConnectedModels(modelClass: string): array
         + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
         + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
@@ -29,6 +40,9 @@ package "Nisalatp\\DynamicReportGenerator" {
         - findShortestPath(start: string, end: string, links: array): array|null
         - buildInnerQuery(...)
         - buildOuterQuery(...)
+        - ensureModelsLoaded(): void
+        - resolveAttributeRestrictions(subjects: array|null): void
+        - validateSecurity(request: ReportRequest): void
     }
 
     package "Models" {
@@ -54,6 +68,22 @@ package "Nisalatp\\DynamicReportGenerator" {
             + sql_fragment: string
             + dependencies: array
         }
+
+        class RestrictedModel {
+            + id: int
+            + model_class: string
+            + restricted_by: int|null
+        }
+
+        class AttributeRestriction {
+            + id: int
+            + model_class: string
+            + attribute: string
+            + restriction_type: string
+            + subject_type: string|null
+            + subject_id: int|null
+            + subject(): MorphTo
+        }
     }
 
     package "Registry" {
@@ -77,6 +107,17 @@ package "Nisalatp\\DynamicReportGenerator" {
             + withSqlFragment(sql: string): VirtualAttributeBuilder
             + dependsOn(targetModelClasses: array): VirtualAttributeBuilder
             + register(): VirtualAttribute
+        }
+    }
+
+    package "Exceptions" {
+        class ReportMakerException <<Exception>> {}
+        class ReportMakerSecurityException <<Exception>> {}
+    }
+
+    package "Contracts" {
+        interface DynamicReportSubject {
+            + getDynamicReportSubjects(): array
         }
     }
 
@@ -165,6 +206,10 @@ package "Nisalatp\\DynamicReportGenerator" {
     ReportMaker --> ReportRequest : "consumes"
     ReportMaker --> SavedReport : "manages"
     ReportMaker --> ReportLog : "creates"
+    ReportMaker --> RestrictedModel : "queries"
+    ReportMaker --> AttributeRestriction : "evaluates"
+    ReportMaker --> DynamicReportSubject : "resolves"
+    ReportMaker ..> ReportMakerSecurityException : "throws"
     ReportMaker --> VirtualAttributeRegistry : "resolves va: columns"
     ReportMaker --> ModelLink : "discovers (forward + reverse)"
     ReportMaker --> JoinPlan : "generates via BFS"
