@@ -1,0 +1,76 @@
+@startuml Activity Diagram
+title Dynamic Report Generator - Report Generation Activity Flow
+
+start
+
+:Client calls `loadAndGenerate(reportId)` \n or passes a raw `ReportRequest`;
+
+if (Is Saved Report?) then (Yes)
+  :Fetch `SavedReport` from DB;
+  :Log Execution in `dynamic_report_logs`;
+  :Deserialize JSON Payload into AST;
+else (No)
+  :Use provided `ReportRequest` AST;
+endif
+
+:Validate Base Model;
+
+:Extract Virtual Attribute Dependencies from Target Models and Filters;
+:Validate Target Models;
+
+:Discover Eloquent Relationships (Bidirectional);
+
+if (Link Graph Cached?) then (Yes)
+  :Return cached bidirectional graph;
+else (No)
+  :Phase 1: Forward Discovery via Reflection (getForwardRelations);
+  note right
+    Scans each allowed model's public methods
+    to find BelongsTo, HasOne, HasMany,
+    BelongsToMany relationships.
+  end note
+  :Phase 2: Reverse Synthesis (getReverseRelations);
+  note right
+    For every forward edge A→B where
+    B→A does not exist, synthesize the
+    inverse edge by inverting the
+    relationship type.
+    BelongsTo ↔ HasMany
+    HasOne → BelongsTo
+    BelongsToMany → BelongsToMany (swap keys)
+  end note
+  :Cache bidirectional graph in memory;
+endif
+
+:Calculate Shortest Join Path (BFS Algorithm);
+:Generate `JoinPlan` with direction metadata (Left Joins);
+
+:Initialize DB Query Builder on Base Model;
+:Apply Joins from `JoinPlan`;
+:Apply Selected Attributes (SELECT clause);
+:Resolve `va:*` Attributes via Registry into Subqueries;
+
+if (Has Inner Filters?) then (Yes)
+  :Traverse Filter AST (Recursive);
+  :Apply `where` and `whereIn` clauses;
+else (No)
+endif
+
+if (Has Group Bys or Aggregates or Outer Filters?) then (Yes)
+  :Wrap current query as a Sub-query;
+  :Apply `GROUP BY` columns;
+  :Apply SQL Aggregations (SUM, AVG, COUNT);
+  
+  if (Has Outer Filters?) then (Yes)
+    :Traverse Outer Filter AST;
+    :Apply `HAVING` clauses;
+  else (No)
+  endif
+else (No)
+endif
+
+:Return final Laravel Query Builder;
+
+stop
+
+@enduml

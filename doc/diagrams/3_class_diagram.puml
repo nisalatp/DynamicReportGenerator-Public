@@ -1,0 +1,179 @@
+@startuml Class Diagram
+title Dynamic Report Generator - Class Diagram
+
+package "Nisalatp\\DynamicReportGenerator" {
+
+    class ReportMaker {
+        - allowedModels: array
+        - cachedLinks: array|null
+        + generate(request: ReportRequest): Builder
+        + generatePaginated(request: ReportRequest, perPage: int): LengthAwarePaginator
+        + exportToCsv(request: ReportRequest, filename: string): StreamedResponse
+        + toRawSql(query: Builder): string
+        + explainJoinPlan(request: ReportRequest): JoinPlan
+        + getConnectedModels(modelClass: string): array
+        + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
+        + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
+        + updateReport(reportId: int, name: string, request: ReportRequest, description: string): SavedReport
+        + deleteReport(reportId: int): void
+        + assignReport(reportId: int, userId: int): void
+        + unassignReport(reportId: int, userId: int): void
+        + getSavedReports(): Collection
+        + getAssignedReports(userId: int): Collection
+        + getReportLogs(savedReportId: int): Collection
+        - logAction(savedReportId: int, userId: int, action: string, details: array): void
+        - discoverLinks(): array
+        - getForwardRelations(): array
+        - getReverseRelations(forwardLinks: array): array
+        - planJoins(base: string, targets: array, links: array): JoinPlan
+        - findShortestPath(start: string, end: string, links: array): array|null
+        - buildInnerQuery(...)
+        - buildOuterQuery(...)
+    }
+
+    package "Models" {
+        class SavedReport {
+            + id: int
+            + name: string
+            + payload: array
+            + logs(): HasMany
+            + assignedUsers(): BelongsToMany
+        }
+
+        class ReportLog {
+            + id: int
+            + action: string
+            + details: array
+            + savedReport(): BelongsTo
+        }
+
+        class VirtualAttribute {
+            + id: int
+            + name: string
+            + base_model: string
+            + sql_fragment: string
+            + dependencies: array
+        }
+    }
+
+    package "Registry" {
+        class VirtualAttributeRegistry {
+            - attributes: Collection
+            + {static} getInstance(): VirtualAttributeRegistry
+            + load(): void
+            + get(name: string): VirtualAttribute|null
+            + getAll(): Collection
+        }
+    }
+
+    package "Builders" {
+        class VirtualAttributeBuilder {
+            - name: string
+            - baseModel: string
+            - sqlFragment: string
+            - dependencies: array
+            + {static} create(name: string): VirtualAttributeBuilder
+            + forBaseModel(modelClass: string): VirtualAttributeBuilder
+            + withSqlFragment(sql: string): VirtualAttributeBuilder
+            + dependsOn(targetModelClasses: array): VirtualAttributeBuilder
+            + register(): VirtualAttribute
+        }
+    }
+
+    package "Types (AST & DTOs)" {
+        class ReportRequest {
+            + baseModel: string
+            + targetModels: array
+            + selectedAttributes: array
+            + innerFilters: FilterNode
+            + groupBys: array
+            + aggregates: array
+            + outerFilters: FilterNode
+            + sorts: array
+            + toJson(): string
+            + {static} fromJson(json: string): ReportRequest
+        }
+
+        interface FilterNode {
+            + toArray(): array
+        }
+
+        class FilterGroup implements FilterNode {
+            + logic: string
+            + children: array
+        }
+
+        class FilterLeaf implements FilterNode {
+            + attribute: Attribute
+            + operator: string
+            + value: mixed
+        }
+
+        class Attribute {
+            + modelClass: string
+            + column: string
+            + type: string
+            + isVirtual: boolean
+            + alias: string
+        }
+
+        class Sort {
+            + attribute: Attribute
+            + direction: string
+        }
+
+        class Aggregate {
+            + attribute: Attribute
+            + function: string
+            + alias: string
+            - ALLOWED_FUNCTIONS: array
+        }
+
+        class ReportSerializer {
+            + toJson(request: ReportRequest): string
+            + fromJson(json: string): ReportRequest
+            - parseFilterNode(data: array): FilterNode
+        }
+
+        class ModelLink {
+            + fromModel: string
+            + toModel: string
+            + type: string
+            + foreignKey: string
+            + localKey: string
+            + methodName: string
+            + direction: string = "forward"
+        }
+
+        class JoinStep {
+            + fromModel: string
+            + toModel: string
+            + joinType: string
+            + localTableAlias: string
+            + remoteTableAlias: string
+            + localKey: string
+            + foreignKey: string
+            + relationType: string
+            + direction: string = "forward"
+        }
+
+        class JoinPlan {
+            + steps: array
+        }
+    }
+
+    ReportMaker --> ReportRequest : "consumes"
+    ReportMaker --> SavedReport : "manages"
+    ReportMaker --> ReportLog : "creates"
+    ReportMaker --> VirtualAttributeRegistry : "resolves va: columns"
+    ReportMaker --> ModelLink : "discovers (forward + reverse)"
+    ReportMaker --> JoinPlan : "generates via BFS"
+    JoinPlan o-- JoinStep : "contains"
+    VirtualAttributeBuilder ..> VirtualAttribute : "creates/updates"
+    VirtualAttributeRegistry o-- VirtualAttribute : "caches"
+    ReportRequest *-- FilterNode
+    FilterGroup o-- FilterNode
+    ReportSerializer ..> ReportRequest : "serializes/deserializes"
+}
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml Architecture Diagram
+title Dynamic Report Generator - High Level Architecture
+
+node "Client Application (Laravel)" {
+    [Controllers]
+    [UI Framework]
+}
+
+package "Nisalatp\\DynamicReportGenerator\n(Free & Open Source Composer Package)" {
+    [ReportMaker (Engine)] as Engine
+    [Types & AST Nodes] as AST
+    [ReportSerializer] as Serializer
+    [VirtualAttributeRegistry\n(UX Abstraction Layer)] as VARegistry
+    [VirtualAttributeBuilder] as VABuilder
+    [Service Provider] as Provider
+    [Models (SavedReport, ReportLog, VirtualAttribute)] as Models
+}
+
+database "MySQL / PostgreSQL / SQLite" {
+    [dynamic_saved_reports]
+    [dynamic_report_logs]
+    [dynamic_report_user]
+    [dynamic_virtual_attributes]
+}
+
+node "Frontend Clients (Decoupled)" {
+    [React / Vue / Blade / Java / MCP (LLM)] as Clients
+}
+
+[Clients] --> [Controllers] : "Sends JSON AST"
+
+[Controllers] --> Engine : "Schema Discovery (Broker)\n(getAvailableModels, getModelAttributes)"
+[Controllers] --> Engine : "Calls API\n(generate, save, load, explainJoinPlan, exportToCsv)"
+[Controllers] --> VABuilder : "Defines VAs via Playground"
+Engine --> AST : "Validates & Traverses"
+Engine --> Serializer : "Converts AST to/from JSON"
+Engine --> VARegistry : "Fetches SQL Fragments during Compilation"
+Engine --> Models : "Manages DB State"
+
+VABuilder --> [dynamic_virtual_attributes] : "Persists Raw Subqueries"
+VARegistry --> [dynamic_virtual_attributes] : "Loads & Caches VAs"
+
+Models --> [dynamic_saved_reports] : "Reads/Writes Payload"
+Models --> [dynamic_report_logs] : "Inserts Audit Trail"
+Models --> [dynamic_report_user] : "Manages Assignments"
+
+Provider --> [Controllers] : "Registers Config\n& Singletons"
+Provider --> VARegistry : "Boots Singleton Instance"
+
+@enduml

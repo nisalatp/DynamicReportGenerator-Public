@@ -1,0 +1,59 @@
+@startuml Entity Relationship Diagram
+title Dynamic Report Generator - ERD
+
+skinparam linetype ortho
+
+entity "dynamic_saved_reports" as SavedReport {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * name : varchar
+  description : text <<nullable>>
+  * payload : json
+  user_id : unsignedBigInteger <<FK>> <<nullable>> (Owner)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "dynamic_report_logs" as ReportLog {
+  * id : unsignedBigInteger <<PK>>
+  --
+  saved_report_id : unsignedBigInteger <<FK>> <<nullable>>
+  user_id : unsignedBigInteger <<nullable>>
+  * action : varchar
+  details : json <<nullable>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "dynamic_report_user" as ReportUserPivot {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * saved_report_id : unsignedBigInteger <<FK>>
+  * user_id : unsignedBigInteger
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "users" as User {
+  * id : unsignedBigInteger <<PK>>
+  --
+  (Client Application Table)
+}
+
+entity "dynamic_virtual_attributes" as VirtualAttribute {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * name : varchar (e.g., 'total_order_value')
+  * base_model : varchar (e.g., 'App\\Models\\Order')
+  * sql_fragment : text
+  dependencies : json <<nullable>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+SavedReport ||--o{ ReportLog : "has many"
+SavedReport ||--o{ ReportUserPivot : "has many (assigned users)"
+User ||--o{ ReportUserPivot : "assigned to"
+User ||--o{ SavedReport : "owns"
+
+@enduml

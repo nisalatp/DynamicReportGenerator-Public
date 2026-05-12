@@ -1,0 +1,68 @@
+@startuml Sequence Execution Diagram
+title Execution and Logging Sequence
+
+actor Client
+participant "ReportMaker" as Maker
+participant "VirtualAttributeRegistry" as VARegistry
+participant "SavedReport" as DBReport
+participant "ReportLog" as DBLog
+participant "ReportRequest" as Request
+participant "ReportSerializer" as Serializer
+
+Client -> Maker : loadAndGenerate(reportId, userId)
+activate Maker
+
+Maker -> DBReport : findOrFail(reportId)
+activate DBReport
+DBReport --> Maker : SavedReport Model
+deactivate DBReport
+
+Maker -> Request : fromJson(savedReport->payload)
+activate Request
+Request -> Serializer : fromJson(json)
+activate Serializer
+Serializer --> Request : ReportRequest Object (AST)
+deactivate Serializer
+Request --> Maker : ReportRequest Object
+deactivate Request
+
+Maker -> Maker : extractVirtualAttributeDependencies()
+activate Maker
+Maker -> VARegistry : findByName(baseModel, name)
+VARegistry --> Maker : VirtualAttribute Model
+Maker -> Maker : Merge Dependencies into Target Models
+deactivate Maker
+
+Maker -> Maker : generate(ReportRequest)
+activate Maker
+Maker -> Maker : discoverLinks()
+note right
+  Phase 1: getForwardRelations()
+  Phase 2: getReverseRelations()
+  Result: bidirectional graph (cached)
+end note
+Maker -> Maker : planJoins(baseModel, targetModels)
+note right
+  BFS findShortestPath() on
+  bidirectional graph. Each JoinStep
+  carries direction metadata.
+end note
+Maker -> Maker : buildInnerQuery()
+Maker -> VARegistry : Resolve VA SQL Fragments
+VARegistry --> Maker : Raw Subquery Strings
+Maker -> Maker : buildOuterQuery()
+Maker -> Maker : Apply Sorts (ORDER BY)
+Maker --> Maker : Query Builder
+deactivate Maker
+
+Maker -> DBLog : create(action='executed', details)
+activate DBLog
+DBLog --> Maker : ReportLog Model
+deactivate DBLog
+
+Maker --> Client : Query Builder
+deactivate Maker
+
+Client -> Client : builder->paginate()
+
+@enduml

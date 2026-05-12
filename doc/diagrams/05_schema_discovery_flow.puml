@@ -1,0 +1,110 @@
+@startuml 05_schema_discovery_flow
+
+skinparam backgroundColor #FFFFFF
+skinparam handwritten false
+skinparam monochrome false
+skinparam sequenceMessageAlign center
+
+actor "Frontend UI / AI Agent" as UI
+participant "Host Application\n(Routes/Controller)" as Controller
+participant "DynamicReport\n(Facade)" as Facade
+participant "ReportMaker\n(Singleton Engine)" as Engine
+participant "Laravel Schema\nBuilder" as DB
+participant "VirtualAttribute\nRegistry (Cache)" as VA
+
+title Schema Discovery Broker Flow
+
+== 1. Discovering Available Models ==
+
+UI -> Controller : GET /api/schema/models
+activate Controller
+
+Controller -> Facade : DynamicReport::getAvailableModels()
+activate Facade
+
+Facade -> Engine : getAvailableModels()
+activate Engine
+
+Engine --> Facade : array ["User", "Order", "Product"]
+deactivate Engine
+
+Facade --> Controller : models array
+deactivate Facade
+
+Controller --> UI : JSON Response
+deactivate Controller
+
+== 2. Discovering Attributes & Virtual Attributes ==
+
+UI -> Controller : GET /api/schema/models/Order/attributes
+activate Controller
+
+Controller -> Facade : DynamicReport::getModelAttributes("Order")
+activate Facade
+
+Facade -> Engine : getModelAttributes("Order")
+activate Engine
+
+Engine -> DB : Schema::getColumnListing('orders')
+activate DB
+DB --> Engine : ["id", "user_id", "amount", "created_at"]
+deactivate DB
+
+Engine -> VA : getForModel("Order")
+activate VA
+note right of VA
+  Registry is a Singleton. 
+  It loads from DB only once per request.
+end note
+VA --> Engine : Collection [VirtualAttribute(name="total_revenue")]
+deactivate VA
+
+note over Engine
+  Engine intelligently prefixes VAs with "va:"
+  and merges them with physical columns.
+end note
+
+Engine --> Facade : ["id", "amount", ..., "va:total_revenue"]
+deactivate Engine
+
+Facade --> Controller : unified attributes array
+deactivate Facade
+
+Controller --> UI : JSON Response
+deactivate Controller
+
+== 3. Discovering Bidirectional Relationships (New) ==
+
+UI -> Controller : GET /api/schema/models/Order/connected
+activate Controller
+
+Controller -> Facade : DynamicReport::getConnectedModels("Order")
+activate Facade
+
+Facade -> Engine : getConnectedModels("Order")
+activate Engine
+
+Engine -> Engine : discoverLinks()
+note right of Engine
+  Phase 1: Forward links via Reflection
+  Phase 2: Reverse synthesis for missing edges
+  Result cached in-memory
+end note
+
+Engine --> Facade : array [User => ModelLink(forward), OrderItem => ModelLink(forward)]
+deactivate Engine
+
+Facade --> Controller : connected models with direction metadata
+deactivate Facade
+
+Controller --> UI : JSON Response
+deactivate Controller
+
+note over UI
+  Each ModelLink includes a 'direction' field
+  ('forward' or 'reverse') so the UI can
+  distinguish explicitly declared relationships
+  from engine-inferred reverse edges.
+end note
+
+@enduml

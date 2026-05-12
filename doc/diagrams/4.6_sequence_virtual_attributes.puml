@@ -1,0 +1,50 @@
+@startuml Sequence Diagram - Virtual Attributes
+title Dynamic Report Generator - Virtual Attribute Lifecycle
+
+actor "Developer / App" as Dev
+participant "VirtualAttributeBuilder" as Builder
+database "dynamic_virtual_attributes" as DB
+participant "ReportMaker" as Engine
+participant "VirtualAttributeRegistry" as Registry
+
+== 1. Registration Phase ==
+
+Dev -> Builder : create('total_order_value')\n  ->forBaseModel(User::class)\n  ->withSqlFragment(...)\n  ->dependsOn([Order::class])\n  ->register()
+activate Builder
+
+Builder -> DB : updateOrCreate(name, base_model, sql_fragment, dependencies)
+activate DB
+DB --> Builder : VirtualAttribute Model
+deactivate DB
+
+Builder --> Dev : VirtualAttribute Model
+deactivate Builder
+
+== 2. Execution Phase ==
+
+Dev -> Engine : generate(ReportRequest)
+activate Engine
+
+note right of Engine: Engine iterates over requested columns\nand finds one starting with 'va:'
+
+Engine -> Registry : getInstance()->get('total_order_value')
+activate Registry
+
+Registry -> DB : SELECT * FROM dynamic_virtual_attributes (if not cached)
+activate DB
+DB --> Registry : VirtualAttribute Data
+deactivate DB
+
+Registry --> Engine : VirtualAttribute Model
+deactivate Registry
+
+Engine -> Engine : extractVirtualAttributeDependencies()\n-> Adds 'Order' to global dependencies array
+
+note right of Engine: During SQL Compilation (buildInnerQuery)
+
+Engine -> Engine : Replaces 'va:total_order_value'\nwith raw SQL fragment\n"(SELECT SUM(...) FROM ...)"
+
+Engine --> Dev : Compiled Builder instance
+deactivate Engine
+
+@enduml

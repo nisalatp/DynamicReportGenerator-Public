@@ -1,0 +1,49 @@
+@startuml Deployment Diagram
+title Package Integration / Deployment Diagram
+
+node "Host Infrastructure" {
+    
+    node "Web Server (Nginx/Apache)" {
+        node "PHP Runtime" {
+            package "Host Laravel Application" {
+                [App Controllers]
+                [Host Application Models]
+                
+                package "vendor/nisalatp/dynamic-report-generator" <<Composer Package>> {
+                    [ReportMaker Engine]
+                    [AST Serializer]
+                    [Package Models]
+                }
+            }
+        }
+    }
+
+    database "Relational Database (MySQL/PostgreSQL)" {
+        folder "Host App Tables" {
+            [users]
+            [business_data_tables]
+        }
+        
+        folder "Package Tables (Auto-Migrated)" {
+            [dynamic_saved_reports]
+            [dynamic_report_logs]
+            [dynamic_report_user]
+        }
+    }
+}
+
+[App Controllers] --> [ReportMaker Engine] : "Calls API"
+[ReportMaker Engine] --> [Host Application Models] : "Reflects & Queries"
+[Package Models] --> [dynamic_saved_reports] : "Reads/Writes"
+[Package Models] --> [dynamic_report_logs] : "Audits"
+[Package Models] --> [dynamic_report_user] : "Pivot"
+
+[ReportMaker Engine] --> [business_data_tables] : "Generates SQL for"
+
+note right of "vendor/nisalatp/dynamic-report-generator"
+  Installed via Composer. Runs entirely
+  within the host application's memory
+  space and database connection.
+end note
+
+@enduml

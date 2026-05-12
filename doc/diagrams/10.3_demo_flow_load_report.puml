@@ -1,0 +1,40 @@
+@startuml Demo Load Report
+title Demo Flow: Load Report to Editor
+
+actor "Demo User" as User
+participant "AlpineJS (Frontend)" as UI
+participant "ReportBuilderController" as Controller
+participant "SavedReport (Model)" as DBReport
+
+User -> UI : Click "📚 Saved Reports Library"
+activate UI
+UI -> Controller : GET /builder/saved
+activate Controller
+Controller --> UI : JSON Array of Saved Reports
+deactivate Controller
+UI -> UI : Render List
+UI --> User : Display Modal
+deactivate UI
+
+User -> UI : Click "Load" on a Report
+activate UI
+UI -> Controller : GET /builder/saved/{id}/load
+activate Controller
+
+Controller -> DBReport : findOrFail(id)
+activate DBReport
+DBReport --> Controller : SavedReport Model
+deactivate DBReport
+
+Controller -> Controller : Parse payload (decode JSON string)
+Controller --> UI : JSON Response\n{success: true, payload: AST}
+deactivate Controller
+
+UI -> UI : Map AST to Flat UI Payload\n(Flatten Filters, flatten Attributes)
+note left of UI: Critical step: Translates strictly-typed\nBackend AST back to AlpineJS state.
+
+UI -> UI : Trigger reactivity (Update visual blocks)
+UI --> User : Display Populated Builder Blocks
+deactivate UI
+
+@enduml
