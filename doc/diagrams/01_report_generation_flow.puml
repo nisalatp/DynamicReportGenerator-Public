@@ -1,0 +1,57 @@
+@startuml Report Generation Flow
+title Demo App Flow: Full Report Generation
+
+actor "End-User" as User
+participant "Demo App UI\n(AlpineJS)" as UI
+participant "ReportBuilderController" as Controller
+participant "ReportBuilderRequest\n(Factory)" as Factory
+participant "GovernanceManager\n(ALS)" as Governance
+participant "DynamicReport (Facade)\nEngine" as Engine
+database "Database" as DB
+
+User -> UI : Select Base Model (e.g. 'User')
+activate UI
+UI -> UI : Initialize AST State
+
+User -> UI : Select Columns & Virtual Attributes
+UI -> UI : Update AST (Attributes Array)
+
+User -> UI : Apply Filters
+UI -> UI : Update AST (Filters Array)
+
+User -> UI : Click "Generate Report"
+UI -> UI : Serialize AST to JSON
+UI -> Controller : POST /generate (JSON Payload)
+activate Controller
+
+Controller -> Factory : ReportBuilderRequest::createFromPayload(JSON)
+activate Factory
+Factory --> Controller : Validated AST Request
+deactivate Factory
+
+Controller -> Governance : GovernanceManager::getMatrix()
+activate Governance
+Governance --> Controller : Attribute Restrictions (ALS)
+deactivate Governance
+
+Controller -> Engine : DynamicReport::generate(ReportRequest)
+activate Engine
+Engine -> Engine : extractVirtualAttributeDependencies()
+Engine -> Engine : discoverLinks() [bidirectional: forward + reverse]
+Engine -> Engine : planJoins() via BFS on bidirectional graph
+Engine -> Engine : buildInnerQuery() & applyFilters()
+Engine -> DB : Execute Query Builder
+activate DB
+DB --> Engine : Result Set
+deactivate DB
+Engine --> Controller : Paginated Data
+deactivate Engine
+
+Controller --> UI : JSON Response (Data & Metadata)
+deactivate Controller
+
+UI -> UI : Update Data Grid State
+UI --> User : Display Generated Report
+deactivate UI
+
+@enduml

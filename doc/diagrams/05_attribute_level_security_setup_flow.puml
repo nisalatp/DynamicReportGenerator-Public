@@ -1,0 +1,62 @@
+@startuml Attribute Level Security Setup Flow
+title Demo App Flow: Attribute Level Security (ALS) Setup
+
+actor "Data Governance\n(Admin)" as Admin
+participant "Governance UI" as UI
+participant "SecurityConfigController" as Controller
+participant "GovernanceManager\n(Service)" as Governance
+database "Database" as DB
+
+== Loading the Matrix ==
+Admin -> UI : Open "Data Governance" Tab
+activate UI
+UI -> Controller : GET /security
+activate Controller
+Controller -> DB : Select Available Models & Roles
+activate DB
+DB --> Controller : Models & Roles Data
+deactivate DB
+Controller --> UI : Render View
+deactivate Controller
+
+Admin -> UI : Select Model (e.g., 'User') & Role (e.g., 'Analyst')
+UI -> Controller : GET /security/matrix?model_class=...&subject_id=...
+activate Controller
+Controller -> Governance : GovernanceManager::getMatrix()
+activate Governance
+Governance -> DB : Fetch dynamic_attribute_restrictions
+activate DB
+DB --> Governance : Existing Restrictions
+deactivate DB
+Governance --> Controller : Matrix Payload (attributes + is_reportable)
+deactivate Governance
+Controller --> UI : JSON Data
+deactivate Controller
+UI --> Admin : Render Toggle Switches & Selectors
+
+== Saving the Matrix ==
+Admin -> UI : Change Rule (e.g., Email -> Masked)
+Admin -> UI : Click "Save Changes"
+UI -> Controller : POST /security/save (JSON Payload)
+activate Controller
+Controller -> Governance : GovernanceManager::saveMatrix()
+activate Governance
+
+note right: Service manages creating, updating, or deleting\nrules based on 'unrestricted', 'masked', or 'blocked'.
+
+Governance -> DB : BEGIN TRANSACTION
+activate DB
+Governance -> DB : DELETE/INSERT dynamic_attribute_restrictions
+Governance -> DB : COMMIT
+DB --> Governance : Success
+deactivate DB
+
+Governance --> Controller : void
+deactivate Governance
+
+Controller --> UI : Success Response
+deactivate Controller
+UI --> Admin : Show "Saved!" Notification
+deactivate UI
+
+@enduml

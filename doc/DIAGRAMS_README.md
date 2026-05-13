@@ -122,97 +122,61 @@ public function getConnectedModels(string $modelClass): array
 
 ---
 
-## Part 2: Demo Environment Integration (Frontend-to-Backend)
+## Part 2: Demo Environment Integration & UI-Agnostic Services
 
-### `10.1_demo_flow_generate_report.puml`
-**Implementation Files**: `demo-app/app/Http/Controllers/ReportBuilderController.php`
-**Explanation**: Shows how the host application controller acts as a translation layer between the flat JSON sent by the AlpineJS UI and the strict AST expected by the Engine.
+### `01_report_generation_flow.puml`
+**Implementation Files**: `src/Types/ReportBuilderRequest.php`, `src/Services/GovernanceManager.php`
+**Explanation**: Shows how the host application controller uses the `ReportBuilderRequest` factory to transform the flat JSON sent by the frontend into the strict AST. It also explicitly shows the `GovernanceManager` intercepting the request to apply Attribute Level Security (ALS) rules before execution.
 
 **Code Evidence**:
 ```php
-// ReportBuilderController.php
-private function buildReportRequest(array $payload): ReportRequest
+// ReportBuilderRequest.php
+public static function createFromPayload(array $payload): self
 {
-    // Maps the flat array from the UI into strict AST DTOs
     $selectedAttributes = collect($payload['selectedAttributes'] ?? [])->map(function ($attr) {
         return new Attribute($attr['model'], $attr['column'], $attr['type']);
     })->toArray();
 
-    return new ReportRequest(
+    return new self(
         baseModel: $payload['baseModel'],
         targetModels: $payload['targetModels'] ?? [],
         selectedAttributes: $selectedAttributes,
-        ...
+        // ...
     );
 }
 ```
 
-### `10.2_demo_flow_save_report.puml`
-**Implementation Files**: `src/ReportMaker.php` (`saveReport()`)
-**Explanation**: Demonstrates how the backend serializes the AST into a JSON payload and saves it into the `dynamic_saved_reports` table via Eloquent.
+### `02_virtual_attribute_builder_flow.puml`
+**Implementation Files**: `src/Services/VirtualAttributeCompiler.php`, `src/Builders/VirtualAttributeBuilder.php`
+**Explanation**: Details how the frontend visual "No-Code" dropdowns are sent to the `/va-builder/compile` endpoint, where the `VirtualAttributeCompiler` securely generates the SQL fragment using Laravel's Reflection API, before passing it to the Fluent Builder pattern for registration.
 
 **Code Evidence**:
 ```php
-// ReportMaker.php
-public function saveReport(string $name, ReportRequest $request, ?int $userId = null, string $description = ''): SavedReport
+// VirtualAttributeCompiler.php
+public static function compileVisualPayload(array $payload): string
 {
-    return SavedReport::create([
-        'name' => $name,
-        'description' => $description,
-        // json_decode forces Eloquent's array cast to handle encoding properly
-        'payload' => json_decode($request->toJson(), true), 
-        'user_id' => $userId,
-    ]);
+    $baseModel = $payload['baseModel'];
+    $targetModel = $payload['ast'][0]['model'];
+    // Reflection logic safely maps table names and relationships...
+    return "(SELECT {$agg}({$col}) FROM {$targetTable} WHERE ...)";
 }
 ```
 
-### `10.3_demo_flow_load_report.puml`
-**Implementation Files**: `demo-app/resources/views/builder.blade.php` (`loadReportToEditor()`)
-**Explanation**: **Highly critical for the defense.** It maps the reverse-translation process where the strict backend AST is fetched from the database and flattened back into the visual UI state so AlpineJS can re-render the visual blocks.
+### `03_save_and_load_report_flow.puml`
+**Implementation Files**: `src/ReportMaker.php` (`saveReport()`)
+**Explanation**: Demonstrates how the backend strictly validates the AST using the Factory before serializing it into a JSON payload and saving it into the `dynamic_saved_reports` table via Eloquent.
 
-**Code Evidence**:
-```javascript
-// builder.blade.php
-async loadReportToEditor(id) {
-    const response = await fetch(`/builder/saved/${id}/load`);
-    const data = await response.json();
-    
-    let ast = data.payload;
-    if (typeof ast === 'string') ast = JSON.parse(ast); // Graceful fallback
-    
-    // Translates strictly-typed Backend AST back to flat AlpineJS state
-    const selAttrs = (ast.selectedAttributes || []).map(a => ({
-        model: a.modelClass,
-        column: a.column,
-        type: a.type,
-        alias: a.alias || null
-    }));
+### `04_execute_saved_report_flow.puml`
+**Implementation Files**: `src/Types/ReportBuilderRequest.php` (`createFromSavedReport()`)
+**Explanation**: Maps how a previously saved report bypasses UI serialization completely. The database state is hydrated directly into the AST DTO for completely secure, server-side execution.
 
-    this.payload.selectedAttributes = selAttrs; // Triggers UI reactivity
-}
-```
+### `05_attribute_level_security_setup_flow.puml`
+**Implementation Files**: `src/Services/GovernanceManager.php`
+**Explanation**: Visualizes the `GovernanceManager` service abstracting the `dynamic_attribute_restrictions` table. It shows the flow for converting an Admin's UI selection into `masked` or `blocked` rules.
 
-### `10.5_demo_flow_register_visual_va.puml` & `10.6_demo_flow_register_advanced_va.puml`
-**Implementation Files**: `demo-app/resources/views/va-builder.blade.php`, `src/Builders/VirtualAttributeBuilder.php`
-**Explanation**: Details how AlpineJS transpiles visual "No-Code" dropdowns into a raw SQL fragment on the frontend, and passes it to the Fluent Builder pattern on the backend to register the Virtual Attribute.
-
-**Code Evidence**:
-```javascript
-// va-builder.blade.php (Frontend No-Code Transpilation)
-compileVisualSql() {
-    // Converts UI state into raw SQL representation
-    this.payload.sqlFragment = `(SELECT ${this.visual.operation}(${this.visual.targetColumn}) FROM ${target.table} WHERE ${target.table}.${this.visual.targetModelKey} = t0.${this.visual.baseModelKey})`;
-}
-```
-
-```php
-// VirtualAttributeBuilderController.php (Backend Registration via Fluent API)
-$builder = VirtualAttributeBuilder::create($payload['name'])
-    ->forBaseModel($payload['baseModel'])
-    ->withSqlFragment($payload['sqlFragment'])
-    ->dependsOn($payload['dependencies'])
-    ->register();
-```
+### `06_report_assignment_flow.puml`
+**Implementation Files**: `src/Models/SavedReport.php`
+**Explanation**: Demonstrates the use of the `dynamic_report_user` pivot table and Eloquent's `sync()` method to achieve stateless, array-based access control to Saved Reports.
 
 ---
 

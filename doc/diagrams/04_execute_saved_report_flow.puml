@@ -1,0 +1,43 @@
+@startuml Execute Saved Report Flow
+title Demo App Flow: Execute Saved Report Directly
+
+actor "End-User" as User
+participant "Demo App UI" as UI
+participant "ReportBuilderController" as Controller
+participant "ReportBuilderRequest\n(Factory)" as Factory
+participant "DynamicReport Engine" as Engine
+database "Database" as DB
+
+User -> UI : Open "Saved Reports Library"
+activate UI
+User -> UI : Click "Execute Live"
+UI -> Controller : GET /saved/{id}/execute
+activate Controller
+
+Controller -> DB : Find SavedReport by ID
+activate DB
+DB --> Controller : SavedReport Instance (with Payload)
+deactivate DB
+
+Controller -> Factory : ReportBuilderRequest::createFromSavedReport(SavedReport)
+activate Factory
+Factory --> Controller : ReportBuilderRequest DTO
+deactivate Factory
+note right: Completely bypasses UI serialization.\nExecutes strictly from DB state.
+
+Controller -> Engine : DynamicReport::generate(ReportRequest)
+activate Engine
+Engine -> DB : Execute Optimized Query
+activate DB
+DB --> Engine : Result Set
+deactivate DB
+Engine --> Controller : Paginated Data
+deactivate Engine
+
+Controller --> UI : Return Rendered Partial View\nor JSON Dataset
+deactivate Controller
+
+UI --> User : Display Results Overlay
+deactivate UI
+
+@enduml

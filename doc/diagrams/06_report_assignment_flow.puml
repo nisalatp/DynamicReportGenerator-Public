@@ -1,0 +1,49 @@
+@startuml Report Assignment Flow
+title Demo App Flow: Assigning Reports to Users/Roles
+
+actor "Data Owner\n(Admin)" as Admin
+participant "Library UI" as UI
+participant "SavedReportController" as Controller
+database "Database" as DB
+
+== Opening the Assignment Modal ==
+Admin -> UI : Open "Saved Reports"
+activate UI
+UI -> Controller : GET /reports
+activate Controller
+Controller -> DB : Select all SavedReports\nwith assignedUsers
+activate DB
+DB --> Controller : SavedReports Collection
+deactivate DB
+Controller --> UI : Render View
+deactivate Controller
+
+Admin -> UI : Click "Assign" on a Report
+UI -> UI : Open Assignment Modal
+UI -> UI : Fetch all Users & Roles (via API/State)
+UI --> Admin : Display Multi-Select Users/Roles
+
+== Saving Assignments ==
+Admin -> UI : Select Users (e.g., 'analyst@istore.com')
+Admin -> UI : Click "Save Assignments"
+UI -> Controller : POST /reports/{id}/assign\n(user_ids array)
+activate Controller
+
+Controller -> DB : Find SavedReport by ID
+activate DB
+DB --> Controller : SavedReport Instance
+deactivate DB
+
+Controller -> DB : sync() dynamic_report_user pivot
+activate DB
+note right: Laravel Eloquent automatically inserts/deletes\nrecords in the many-to-many pivot table.
+DB --> Controller : Success
+deactivate DB
+
+Controller --> UI : Redirect / Success Message
+deactivate Controller
+
+UI --> Admin : Show "Assigned Successfully" Alert
+deactivate UI
+
+@enduml

@@ -1,0 +1,52 @@
+@startuml Save and Load Report Flow
+title Demo App Flow: Save & Load Report
+
+actor "End-User" as User
+participant "Demo App UI\n(AlpineJS)" as UI
+participant "ReportBuilderController" as Controller
+participant "ReportBuilderRequest\n(Factory)" as Factory
+database "Database" as DB
+
+== Saving a Report ==
+User -> UI : Click "Save Configuration"
+activate UI
+UI -> UI : Serialize active AST
+UI -> Controller : POST /save (name, description, AST JSON)
+activate Controller
+
+Controller -> Factory : ReportBuilderRequest::createFromPayload(JSON)
+activate Factory
+Factory --> Controller : Validated AST Request
+deactivate Factory
+
+Controller -> DB : Insert SavedReport (AST Serialized)
+activate DB
+activate DB
+DB --> Controller : Success
+deactivate DB
+Controller --> UI : Response
+deactivate Controller
+UI --> User : Show "Saved!" Alert
+deactivate UI
+
+== Loading a Report ==
+User -> UI : Open "Saved Reports Library"
+activate UI
+UI -> Controller : GET /saved
+activate Controller
+Controller -> DB : Select all SavedReports
+activate DB
+DB --> Controller : Array of Reports
+deactivate DB
+Controller --> UI : JSON List
+deactivate Controller
+UI --> User : Display Library Modal
+
+User -> UI : Click "Load to Editor"
+UI -> UI : fetch /saved/{id}
+UI -> UI : Parse JSON Payload into AlpineJS State
+note right: Recursively reconstructs UI panels\nfrom the strict AST
+UI --> User : Editor visually populated
+deactivate UI
+
+@enduml
