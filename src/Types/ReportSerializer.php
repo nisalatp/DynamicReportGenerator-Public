@@ -55,7 +55,7 @@ class ReportSerializer {
         );
     }
 
-    private function parseFilterNode(array $data): FilterNode {
+    public function parseFilterNode(array $data): FilterNode {
         if (!isset($data['type'])) {
             throw new \InvalidArgumentException("Filter node missing type");
         }

@@ -74,7 +74,7 @@ From a User Experience (UX) perspective, a Virtual Attribute acts as a 2D abstra
 
 ### 4.2 Subquery Pushdown Optimization
 A naive reporting engine would fetch all `User` records, load their related `Orders` into PHP memory, and use a `foreach` loop to sum the totals. This approach scales terribly and causes Out-Of-Memory (OOM) fatal errors on large datasets.
-- **The Solution**: The engine employs **Subquery Pushdown**. Virtual Attributes are stored as raw SQL strings (e.g., `(SELECT SUM(amount) FROM orders WHERE user_id = users.id)`). The engine injects these strings directly into the `SELECT` clause using `DB::raw()`. 
+- **The Solution**: The engine employs **Subquery Pushdown**. Virtual Attributes are stored as raw SQL strings (e.g., `(SELECT SUM(amount) FROM orders WHERE user_id = users.id HAVING SUM(amount) > 100)`). The engine parses the AST (`innerFilters` and `outerFilters`) and injects these strings directly into the `SELECT` clause using `DB::raw()`. 
 - **Why?**: This offloads the computational heavy lifting to the Relational Database Management System (RDBMS). MySQL, Postgres, and SQLite execute C-level aggregations incredibly fast, maintaining an O(1) memory footprint in the PHP application regardless of the dataset size.
 
 ### 4.3 The Singleton Registry Cache
@@ -137,4 +137,22 @@ When processing aggregated calculations (e.g., `SUM`, `COUNT`), the `Aggregate` 
 ### 8.2 RAM Crash Prevention via Pagination and Streaming
 Host applications inherently lack the context to know if a dynamically generated report will evaluate to 50 rows or 5,000,000 rows. If an application blindly calls `->get()` on a massive dataset, the PHP process will crash due to memory exhaustion.
 - **Paginated Generation**: The engine abstracts execution via `DynamicReport::generatePaginated($request, 50)`. This forces the host application into an O(1) memory complexity boundary, ensuring only exactly 50 rows are ever loaded into RAM simultaneously.
-- **Database Chunking & CSV Streaming**: To facilitate massive data exports, the engine provides `DynamicReport::exportToCsv($request)`. Rather than buffering the query results into a PHP string, the engine leverages Laravel's `chunk()` method combined with a `StreamedResponse`. This iterates through the database connection in small blocks and pipes the bytes directly over the HTTP connection to the user's browser, enabling the secure export of gigabyte-scale CSV files without impacting backend server stability.
+- **Database Chunking & CSV Streaming**: To facilitate massive data exports, the engine leverages Laravel's `chunk()` method combined with a `StreamedResponse`. This iterates through the database connection in small blocks and pipes the bytes directly over the HTTP connection to the user's browser, enabling the secure export of gigabyte-scale CSV files without impacting backend server stability.
+
+---
+
+## 9. UI-Agnostic Service Abstraction (The Plug-and-Play Paradigm)
+
+A critical architectural evolution of the package is the complete decoupling of "glue logic" from the Host Application's HTTP controllers. 
+
+### 9.1 The Problem with "Fat" Host Controllers
+Historically, Host Applications were required to write hundreds of lines of boilerplate controller logic to translate frontend JSON payloads into the engine's strict AST DTOs, or to query the database to build security matrices. This violated the DRY principle and made implementing custom UIs in React, Vue, or Next.js cumbersome.
+
+### 9.2 Package Service Encapsulation
+To achieve a true "plug-and-play" architecture, all bridging logic is encapsulated within the core package via dedicated Services and Factories:
+- **`ReportBuilderRequest::fromPayload()`**: Abstracted the complex mapping of nested frontend JSON into the strict `ReportRequest` AST, reducing the host's Report Builder controller to a single line of code.
+- **`VirtualAttributeCompiler`**: Encapsulates the logic of transpiling a 2D visual builder payload into a raw scalar SQL subquery.
+- **`VirtualAttributeManager`**: Centralizes usage tracking (via recursive JSON `LIKE` queries against saved payloads) and enforces strict deletion safety constraints, preventing the host app from accidentally breaking saved reports.
+- **`GovernanceManager`**: Abstracts the querying and saving of the polymorphic Attribute-Level Security rules, allowing the host to fetch the "Security Matrix" without any knowledge of the underlying database schema.
+
+**Why?**: By abstracting this logic into the `Nisalatp\DynamicReportGenerator\Services` namespace, Host Applications are reduced to pure HTTP routers. They catch the frontend payload, pass it directly to the package Service, and return the response. This guarantees flawless integration regardless of the UI framework utilized by the consuming application.

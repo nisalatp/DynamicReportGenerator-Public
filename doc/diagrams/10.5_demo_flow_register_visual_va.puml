@@ -4,23 +4,27 @@ title Demo Flow: Register Virtual Attribute (Visual Mode)
 actor "Software Engineer / Admin" as User
 participant "AlpineJS (Frontend)" as UI
 participant "VirtualAttributeBuilderController" as Controller
-participant "VirtualAttributeBuilder" as Builder
+participant "VirtualAttributeCompiler\n(Service)" as Compiler
+participant "VirtualAttributeBuilder\n(Factory)" as Builder
 database "MySQL / SQLite" as DB
 
 User -> UI : Select Target Model, Aggregation Function,\nand mapped Foreign/Local keys
 activate UI
 UI -> UI : Update local `visual` state
 
-User -> UI : Click "Save & Register Virtual Attribute"
-UI -> UI : compileVisualSql()
-note right of UI
-  Translates a visual 3D relationship
-  into a flat SQL Subquery fragment
+User -> UI : Click "Save Virtual Attribute"
+UI -> Controller : POST /va-builder/register\n(name, baseModel, ast, dependencies)
+activate Controller
+
+Controller -> Compiler : compileVisualPayload(payload)
+activate Compiler
+note right of Compiler
+  Translates the visual AST (Inner/Outer Filters)
+  into a flat SQL Subquery fragment via ReportMaker
   (Creating the UX Abstraction Layer)
 end note
-
-UI -> Controller : POST /va-builder/register\n(name, baseModel, sqlFragment, dependencies)
-activate Controller
+Compiler --> Controller : sqlFragment
+deactivate Compiler
 
 Controller -> Builder : create(name)
 activate Builder

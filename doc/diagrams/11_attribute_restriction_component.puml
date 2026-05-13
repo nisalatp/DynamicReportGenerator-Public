@@ -14,23 +14,29 @@ package "Host Laravel Application" {
       getDynamicReportSubjects()
       returns [User, Role1, Role2]
     end note
+    
+    [SecurityConfigController] as HostController
 }
 
 package "Nisalatp\\DynamicReportGenerator" {
     
     component "ReportMaker (Engine)" as Engine
     component "Security Validator" as Validator
+    component "GovernanceManager (Service)" as GovManager
     
     [AttributeRestriction] <<Eloquent Model>>
     database "dynamic_attribute_restrictions" as DB_Table
     
     [AttributeRestriction] ..> DB_Table : reads/writes
+    GovManager ..> [AttributeRestriction] : getMatrix() / saveMatrix()
 }
 
 [User Model] --> Engine : Executing Context (auth()->user())
 
 Engine --> IDRS : Resolves active subjects
 Engine --> [AttributeRestriction] : Queries rules for active subjects
+
+HostController --> GovManager : Configures Security Matrix
 
 Engine *-- Validator : delegates AST checks
 Validator --> Engine : throws ReportMakerSecurityException\n(if blocked attribute used in calculations)

@@ -187,6 +187,112 @@ class ReportMaker
         return $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
     }
 
+    public function buildScalarSubquery(\Nisalatp\DynamicReportGenerator\Types\VirtualAttributeRequest $request): string
+    {
+        $this->ensureModelsLoaded();
+        $this->ensureModelAllowed($request->baseModel);
+        $this->ensureModelAllowed($request->targetModel);
+
+        $links = $this->discoverLinks();
+        
+        // Find path from Target Model to Base Model using 'va_sub' as alias prefix
+        $plan = $this->planJoins($request->targetModel, [$request->baseModel], $links, 'va_sub');
+
+        $targetInstance = new $request->targetModel;
+        
+        $query = \Illuminate\Support\Facades\DB::table($targetInstance->getTable() . ' as va_sub0');
+        
+        $aliases = [$request->targetModel => 'va_sub0'];
+        foreach ($plan->steps as $step) {
+            $toInstance = new $step->toModel();
+            
+            $aliases[$step->fromModel] = $step->localTableAlias;
+            $aliases[$step->toModel] = $step->remoteTableAlias;
+            
+            $first = $step->localTableAlias . '.' . $step->localKey;
+            $second = $step->remoteTableAlias . '.' . $step->foreignKey;
+            
+            if ($step->relationType === 'BelongsTo') {
+                $first = $step->localTableAlias . '.' . $step->foreignKey;
+                $second = $step->remoteTableAlias . '.' . $step->localKey;
+            }
+
+            $query->join($toInstance->getTable() . ' as ' . $step->remoteTableAlias, $first, '=', $second, 'inner');
+        }
+
+        // Apply Correlation Binding
+        $baseAliasInSubquery = $aliases[$request->baseModel] ?? 'va_sub0';
+        $baseInstance = new $request->baseModel;
+        $pk = $baseInstance->getKeyName();
+        
+        // Use whereRaw to bind to the outer query's t0 table
+        $query->whereRaw("{$baseAliasInSubquery}.{$pk} = t0.{$pk}");
+
+        // Select the aggregate
+        $aggregateFunc = strtoupper($request->aggregateFunction);
+        $aggregateCol = $request->aggregateColumn;
+        $query->selectRaw("{$aggregateFunc}(va_sub0.{$aggregateCol})");
+
+        // Apply Inner Filters
+        if ($request->innerFilters) {
+            $this->applyFilters($query, $request->innerFilters, $aliases, 'where', 'and', $request->targetModel);
+        }
+
+        // Apply Outer Filters (HAVING)
+        if ($request->outerFilters) {
+            $this->applyFilters($query, $request->outerFilters, $aliases, 'having', 'and', $request->targetModel);
+        }
+
+        return '(' . $this->toRawSql($query) . ')';
+    }
+
+    /**
+     * Get the final generated columns (aliases) from the report request.
+     * This is useful for populating frontend dropdowns for HAVING and ORDER BY.
+     */
+    public function getGeneratedColumns(ReportRequest $whatUserWants): array
+    {
+        $columns = [];
+        
+        $getInnerAlias = function(\Nisalatp\DynamicReportGenerator\Types\Attribute $attr) use ($whatUserWants) {
+            foreach ($whatUserWants->selectedAttributes as $selAttr) {
+                if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
+                    return $selAttr->alias ?? $selAttr->column;
+                }
+            }
+            return $attr->column;
+        };
+
+        if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates)) {
+            foreach ($whatUserWants->groupBys as $g) {
+                $innerColName = $getInnerAlias($g->attribute);
+                if (!in_array($innerColName, $columns)) {
+                    $columns[] = $innerColName;
+                }
+            }
+            foreach ($whatUserWants->aggregates as $a) {
+                $func = strtoupper($a->function);
+                $innerColName = $getInnerAlias($a->attribute);
+                $colName = $a->alias ?? strtolower($func . '_' . preg_replace('/\s+/', '_', $innerColName));
+                if (!in_array($colName, $columns)) {
+                    $columns[] = $colName;
+                }
+            }
+        } else {
+            foreach ($whatUserWants->selectedAttributes as $attr) {
+                $colName = $attr->alias ?? $attr->column;
+                if (str_starts_with($colName, 'va:')) {
+                    $colName = substr($colName, 3);
+                }
+                if (!in_array($colName, $columns)) {
+                    $columns[] = $colName;
+                }
+            }
+        }
+        
+        return $columns;
+    }
+
     private function extractVirtualAttributeDependencies(ReportRequest $request, array &$targetModels): void
     {
         if (!$this->vaRegistry) return;
@@ -198,7 +304,8 @@ class ReportMaker
                 $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
                 $va = $this->vaRegistry->findByName($baseModel, $name);
                 if ($va && is_array($va->dependencies)) {
-                    $targetModels = array_merge($targetModels, $va->dependencies);
+                    $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
+                    $targetModels = array_merge($targetModels, $validDeps);
                 }
             }
         }
@@ -223,7 +330,8 @@ class ReportMaker
                 $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
                 $va = $this->vaRegistry->findByName($baseModel, $name);
                 if ($va && is_array($va->dependencies)) {
-                    $targetModels = array_merge($targetModels, $va->dependencies);
+                    $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
+                    $targetModels = array_merge($targetModels, $validDeps);
                 }
             }
         }
@@ -594,10 +702,12 @@ class ReportMaker
             $checkBlocked($this->extractAttributesFromFilter($req->outerFilters), 'filters');
         }
         if ($req->groupBys) {
-            $checkBlocked($req->groupBys, 'group bys');
+            $gbAttrs = array_map(fn($g) => $g->attribute, $req->groupBys);
+            $checkBlocked($gbAttrs, 'group bys');
         }
         if ($req->aggregates) {
-            $checkBlocked($req->aggregates, 'aggregates');
+            $aggAttrs = array_map(fn($a) => $a->attribute, $req->aggregates);
+            $checkBlocked($aggAttrs, 'aggregates');
         }
         if ($req->sorts) {
             $sortAttrs = array_map(fn($s) => $s->attribute, $req->sorts);
@@ -890,7 +1000,7 @@ class ReportMaker
      * traverse relationships in either direction — even when only one side
      * of the relationship was explicitly declared on the model.
      */
-    private function planJoins(string $base, array $targets, array $links): JoinPlan
+    private function planJoins(string $base, array $targets, array $links, string $aliasPrefix = 't'): JoinPlan
     {
         $steps = [];
         $aliasCounter = 1;
@@ -913,8 +1023,8 @@ class ReportMaker
                     fromModel: $from,
                     toModel: $to,
                     joinType: 'left',
-                    localTableAlias: $i === 0 ? 't0' : 't' . ($aliasCounter - 1),
-                    remoteTableAlias: 't' . $aliasCounter,
+                    localTableAlias: $i === 0 ? $aliasPrefix . '0' : $aliasPrefix . ($aliasCounter - 1),
+                    remoteTableAlias: $aliasPrefix . $aliasCounter,
                     localKey: $link->localKey,
                     foreignKey: $link->foreignKey,
                     relationType: $link->type,
@@ -962,6 +1072,7 @@ class ReportMaker
             $neighbors = $links[$current] ?? [];
             foreach ($neighbors as $neighborClass => $link) {
                 if (!isset($visited[$neighborClass])) {
+
                     $visited[$neighborClass] = true;
                     $newPath = $path;
                     $newPath[] = $neighborClass;
@@ -1015,6 +1126,8 @@ class ReportMaker
                 if ($va) {
                     $selectColumns[] = DB::raw($va->sql_fragment . ' as "' . $finalAlias . '"');
                     continue;
+                } else {
+                    throw new \Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException("Virtual Attribute '{$name}' is missing or deleted. This query cannot be executed.");
                 }
             }
             $alias = $aliases[$attr->modelClass] ?? 't0';
@@ -1078,6 +1191,9 @@ class ReportMaker
     private function applyFilters(Builder $query, FilterNode $node, array $aliases, string $type, string $bool = 'and', ?string $base = null): void
     {
         if ($node instanceof FilterGroup) {
+            if (empty($node->children)) {
+                return;
+            }
             $method = $type === 'where' ? 'where' : 'havingNested';
             $query->$method(function ($sub) use ($node, $aliases, $type, $base) {
                 foreach ($node->children as $child) {

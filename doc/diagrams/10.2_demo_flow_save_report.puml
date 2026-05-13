@@ -5,6 +5,7 @@ actor "Demo User" as User
 participant "AlpineJS (Frontend)" as UI
 participant "ReportBuilderController" as Controller
 participant "DynamicReport (Facade)" as Engine
+participant "ReportBuilderRequest\n(Factory)" as Factory
 database "MySQL / SQLite" as DB
 
 User -> UI : Click "Save Configuration"
@@ -16,8 +17,11 @@ UI -> Controller : POST /builder/save\n(name, desc, payload)
 activate Controller
 
 Controller -> Controller : validate()
-Controller -> Controller : buildReportRequest(payload)
-note right of Controller: Transforms flat array into\nstrict ReportRequest AST
+Controller -> Factory : fromPayload(payload)
+activate Factory
+note right of Factory: Transforms nested frontend JSON\ninto strict ReportRequest AST DTO
+Factory --> Controller : ReportRequest
+deactivate Factory
 
 Controller -> Engine : saveReport(name, AST, null, desc)
 activate Engine

@@ -25,6 +25,7 @@ To ensure enterprise-grade maintainability, several Gang of Four (GoF) design pa
 - **Facade Pattern**: The `DynamicReport` Facade abstracts the complex instantiation of the core engine, exposing a clean, static interface for developers to interact with the package.
 - **Broker Pattern**: The `ReportMaker` engine acts as an intermediary (broker) for Schema Discovery. It abstracts away PHP Reflection and physical database schema lookups, allowing external decoupled frontends to dynamically query the available models and virtual attributes via standard APIs.
 - **Service Provider Pattern**: Allows the package to inject its migrations, configurations, and core services into the host application seamlessly upon installation via Composer.
+- **UI-Agnostic Service Layer**: Complex business logic (AST compilation, security matrix resolution, dynamic usage tracking) is strictly extracted into independent package `Services`. This guarantees that Host Applications (whether built in Vue, React, or Blade) act purely as HTTP routers, ensuring true "plug-and-play" capability without rewriting massive backend controllers.
 
 ## 3.5 Security & Optimization Methodologies
 To meet enterprise standards, specific methodologies were applied to the data extraction processes:

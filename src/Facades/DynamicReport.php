@@ -11,6 +11,7 @@ use Nisalatp\DynamicReportGenerator\ReportMaker;
  * @method static \Symfony\Component\HttpFoundation\StreamedResponse exportToCsv(\Nisalatp\DynamicReportGenerator\Types\ReportRequest $request, string $filename = 'report.csv')
  * @method static string toRawSql(\Illuminate\Database\Query\Builder $query)
  * @method static \Nisalatp\DynamicReportGenerator\Types\JoinPlan explainJoinPlan(\Nisalatp\DynamicReportGenerator\Types\ReportRequest $request)
+ * @method static array getGeneratedColumns(\Nisalatp\DynamicReportGenerator\Types\ReportRequest $request)
  * @method static array getAvailableModels()
  * @method static array getModelAttributes(string $modelClass)
  * @method static array getModelRelationships(string $modelClass)

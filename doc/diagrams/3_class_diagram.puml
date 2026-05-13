@@ -45,6 +45,30 @@ package "Nisalatp\\DynamicReportGenerator" {
         - validateSecurity(request: ReportRequest): void
     }
 
+    package "Http\\Requests" {
+        class ReportBuilderRequest {
+            + {static} fromPayload(payload: array): ReportRequest
+            - {static} parseFilterNode(node: array, isOuter: bool): FilterNode|null
+        }
+    }
+
+    package "Services" {
+        class VirtualAttributeCompiler {
+            + {static} compileVisualPayload(payload: array): string
+        }
+
+        class VirtualAttributeManager {
+            + {static} getAllWithUsageCounts(): Collection
+            + {static} getUsageCount(va: VirtualAttribute): int
+            + {static} safeDelete(id: int, force: bool): void
+        }
+
+        class GovernanceManager {
+            + {static} getMatrix(modelClass: string, subjectClass: string, subjectId: int): array
+            + {static} saveMatrix(modelClass: string, subjectClass: string, subjectId: int, isReportable: bool, attributes: array, authId: int): void
+        }
+    }
+
     package "Models" {
         class SavedReport {
             + id: int
@@ -135,6 +159,16 @@ package "Nisalatp\\DynamicReportGenerator" {
             + {static} fromJson(json: string): ReportRequest
         }
 
+        class VirtualAttributeRequest {
+            + baseModel: string
+            + targetModel: string
+            + aggregateFunction: string
+            + aggregateColumn: string
+            + innerFilters: FilterNode|null
+            + outerFilters: FilterNode|null
+            + {static} fromArray(data: array): VirtualAttributeRequest
+        }
+
         interface FilterNode {
             + toArray(): array
         }
@@ -216,9 +250,18 @@ package "Nisalatp\\DynamicReportGenerator" {
     JoinPlan o-- JoinStep : "contains"
     VirtualAttributeBuilder ..> VirtualAttribute : "creates/updates"
     VirtualAttributeRegistry o-- VirtualAttribute : "caches"
+    ReportMaker --> VirtualAttributeRequest : "consumes (subqueries)"
     ReportRequest *-- FilterNode
+    VirtualAttributeRequest *-- FilterNode
     FilterGroup o-- FilterNode
     ReportSerializer ..> ReportRequest : "serializes/deserializes"
+    ReportBuilderRequest ..> ReportRequest : "creates from payload"
+    VirtualAttributeCompiler ..> VirtualAttributeRequest : "creates from payload"
+    VirtualAttributeCompiler --> ReportMaker : "uses"
+    VirtualAttributeManager --> SavedReport : "queries"
+    VirtualAttributeManager --> VirtualAttribute : "queries/deletes"
+    GovernanceManager --> AttributeRestriction : "manages"
+    GovernanceManager --> VirtualAttributeRegistry : "queries"
 }
 
 @enduml

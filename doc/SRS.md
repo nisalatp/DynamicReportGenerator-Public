@@ -40,7 +40,7 @@ The core compiler that translates frontend requests into secure database queries
 ### 3.2 Virtual Attribute System
 A critical **UX Abstraction layer** that allows engineers to attach complex, calculated subqueries (e.g., a "Total Value" field joining 3 tables) to an Eloquent model. To the non-technical End-User, this appears simply as a single, selectable column in the UI, completely hiding the relational complexity.
 - **FR 3.2.1 Virtual Attribute Registry**: A Singleton service that loads registered SQL fragments into memory once per request lifecycle, injecting them into the Query Builder when requested by the AST.
-- **FR 3.2.2 No-Code Visual Builder**: A UI tool allowing administrators to define aggregations across related tables (e.g., "Total Order Value for a User") through dropdown selections. The UI transpiles these selections into raw SQL.
+- **FR 3.2.2 No-Code Visual Builder**: A UI tool allowing administrators to define aggregations across related tables (e.g., "Total Order Value for a User") through dropdown selections. The UI supports defining complex logic via **Inner Filters** (WHERE clauses on the subquery) and **Outer Filters** (HAVING clauses post-aggregation), transpiling these selections into optimized raw SQL.
 - **FR 3.2.3 Advanced SQL Mode**: Allows Developers to inject raw, highly-optimized SQL subqueries directly into the Registry for maximum flexibility.
 - **FR 3.2.4 Dependency Resolution**: Virtual Attributes automatically declare their target model dependencies, ensuring the core engine executes the necessary `JOIN` operations before running the subquery, entirely behind the scenes.
 

@@ -6,6 +6,8 @@ participant "AlpineJS (Frontend)" as UI
 participant "ReportBuilderController" as Controller
 participant "DynamicReport (Facade)" as Engine
 
+participant "ReportBuilderRequest\n(Factory)" as Factory
+
 User -> UI : Select Base Model, Attributes, Filters
 activate UI
 UI -> UI : Update local `payload` state
@@ -14,8 +16,12 @@ UI -> Controller : POST /builder/generate\n(JSON Payload)
 activate Controller
 
 Controller -> Controller : validate(payload)
-Controller -> Controller : buildReportRequest(payload)
-note right of Controller: Transforms flat array into\nstrict ReportRequest AST
+
+Controller -> Factory : fromPayload(payload)
+activate Factory
+note right of Factory: Transforms nested frontend JSON\ninto strict ReportRequest AST DTO
+Factory --> Controller : ReportRequest
+deactivate Factory
 
 Controller -> Engine : generatePaginated(ReportRequest, 50)
 activate Engine

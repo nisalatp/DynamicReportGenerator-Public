@@ -39,4 +39,16 @@ return [
         'prefix' => 'dynamic-reporting',
         'middleware' => ['web', 'auth'],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | UI Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Variables specifically for frontend implementations of the report builder.
+    |
+    */
+    'ui' => [
+        'max_filter_depth' => 3,
+    ],
 ];
