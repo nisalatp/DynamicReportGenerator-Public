@@ -96,12 +96,17 @@ public function generate(ReportRequest $whatUserWants, ?array $subjects = null):
 ```
 
 ### `4.6_sequence_virtual_attributes.puml` (VA Resolution)
-**Implementation Files**: `src/ReportMaker.php` (`applyFilters()` and `buildInnerQuery()`)
-**Explanation**: When the AST compiler encounters a `va:` prefix or `isVirtual = true`, it queries the `VirtualAttributeRegistry` to fetch the raw SQL subquery and injects it securely into the Builder using `DB::raw()`.
+**Implementation Files**: `src/Concerns/CompilesQueries.php` (`applyFilters()` and `buildInnerQuery()`)
 
-**Code Evidence**:
 ```php
-// ReportMaker.php (Inside applyFilters)
+// Concerns/CompilesQueries.php (Inside applyFilters)
+if ($restriction === 'blocked') {
+    throw new ReportMakerSecurityException("Attribute {$attr} is BLOCKED.");
+} elseif ($restriction === 'masked') {
+    $selectColumns[] = DB::raw("'***' as " . $finalAlias);
+}
+
+// Concerns/CompilesQueries.php (Inside applyFilters)
 $isVirtual = $node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:');
 if ($isVirtual && $this->vaRegistry && $base) {
     $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
@@ -115,12 +120,22 @@ if ($isVirtual && $this->vaRegistry && $base) {
 ```
 
 ### `05_schema_discovery_flow.puml` (Schema Discovery Broker)
-**Implementation Files**: `src/ReportMaker.php` (`getModelAttributes()`, `getConnectedModels()`, `getMaxFilterDepth()`)
+**Implementation Files**: `src/Concerns/DiscoversSchema.php` (`getModelAttributes()`, `getConnectedModels()`, `getMaxFilterDepth()`)
+
+```php
+// Concerns/DiscoversSchema.php
+public function getModelAttributes(string $modelClass): array {
+    // 1. Get physical columns
+    // 2. Merge virtual columns from VirtualAttributeRegistry
+    // 3. Remove columns that are 'blocked' via GovernanceManager
+    return $filteredColumns;
+}
+``` 
 **Explanation**: Maps how the engine acts as an intermediary broker to shield external frontends from Laravel's internal reflection API, merging physical schema columns with Virtual Attributes dynamically. The broker now also exposes `getMaxFilterDepth()` so frontends can enforce the same nesting limit.
 
 **Code Evidence**:
 ```php
-// ReportMaker.php
+// Concerns/DiscoversSchema.php
 public function getModelAttributes(string $modelClass): array
 {
     $this->ensureModelsLoaded();
@@ -142,18 +157,6 @@ public function getModelAttributes(string $modelClass): array
     return array_values(array_filter($allCols, function ($col) use ($modelClass) {
         return $this->getRestrictionType($modelClass, $col, str_starts_with($col, 'va:')) !== 'blocked';
     }));
-}
-
-// Get all connected models — delegates to getModelRelationships()
-public function getConnectedModels(string $modelClass): array
-{
-    return $this->getModelRelationships($modelClass);
-}
-
-// Expose configured filter nesting depth to frontends
-public function getMaxFilterDepth(): int
-{
-    return (int) config('dynamicreportgenerator.ui.max_filter_depth', 3);
 }
 ```
 
@@ -211,18 +214,16 @@ VirtualAttributeBuilder::create('total_order_value')
 ```
 
 ### `03_save_and_load_report_flow.puml`
-**Implementation Files**: `src/ReportMaker.php` (`saveReport()`, `loadToEditor()`)
-**Explanation**: Demonstrates how the backend strictly validates the AST using the Factory before serializing it into a JSON payload and saving it into the `dynamic_saved_reports` table via Eloquent. When loading, `loadToEditor()` uses `ReportSerializer::fromJson()` to reconstruct the full AST — including preserved column aliases — for frontend rehydration.
-
-### `04_execute_saved_report_flow.puml`
-**Implementation Files**: `src/ReportMaker.php` (`loadAndGenerate()`)
-**Explanation**: Maps how a previously saved report bypasses UI serialization completely. The database state is hydrated directly into the AST DTO via `ReportSerializer::fromJson()` for completely secure, server-side execution. The execution is automatically logged in `dynamic_report_logs`.
+**Implementation Files**: `src/Concerns/ManagesReports.php` (`saveReport()`, `loadToEditor()`, `loadAndGenerate()`)
+**Explanation**: 
+*   **`saveReport()`**: Serializes the `ReportRequest` AST into a JSON payload and saves it.
+*   **`loadToEditor()`**: Loads a saved report and rehydrates it back into a `ReportRequest` DTO for the frontend UI to edit.
+*   **`loadAndGenerate()`**: Loads a report, builds it via the engine, and executes it. bypasses UI serialization completely. The database state is hydrated directly into the AST DTO via `ReportSerializer::fromJson()` for completely secure, server-side execution. The execution is automatically logged in `dynamic_report_logs`.
 
 ### `05_attribute_level_security_setup_flow.puml`
 **Implementation Files**: `src/Services/GovernanceManager.php`
 **Explanation**: Visualizes the `GovernanceManager` service abstracting the `dynamic_attribute_restrictions` table. It shows the flow for converting an Admin's UI selection into `masked` or `blocked` rules.
 
-### `06_report_assignment_flow.puml`
 **Implementation Files**: `src/Models/SavedReport.php`
 **Explanation**: Demonstrates the use of the `dynamic_report_user` pivot table and Eloquent's `attach()`/`detach()` methods to achieve stateless, array-based access control to Saved Reports. Both assign and unassign operations are logged in `dynamic_report_logs`.
 

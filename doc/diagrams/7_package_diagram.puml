@@ -13,6 +13,15 @@ package "Nisalatp\\DynamicReportGenerator" {
 
     package "Engine" {
         [ReportMaker]
+        
+        package "Concerns" {
+            [DiscoversSchema]
+            [DiscoversRelationships]
+            [CompilesQueries]
+            [EnforcesSecurity]
+            [ManagesReports]
+            [ResolvesVirtualAttributes]
+        }
     }
 
     package "Types (AST & DTOs)" {
@@ -74,6 +83,7 @@ package "Illuminate (Laravel Framework)" {
 }
 
 ' === Dependency Arrows ===
+[ReportMaker] --> Concerns : "Delegates to traits"
 Providers --> Engine : "Registers as Singleton"
 Facades --> Engine : "Proxies static calls"
 Engine --> Types : "Consumes / Generates"

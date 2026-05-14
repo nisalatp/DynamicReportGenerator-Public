@@ -1,7 +1,7 @@
 # Dynamic Report Generator — Package Feature Tree
 
 > **Verification Status**: Every feature below has been cross-referenced against the source code in `src/`.
-> **Last Validated**: 2026-05-14 against ReportMaker.php (1423 lines)
+> **Last Validated**: 2026-05-14 against ReportMaker.php (254 lines) + 6 Concern traits (1,386 lines)
 > Legend: ✅ Implemented | ⚠️ Partial | ❌ Missing
 
 ---
@@ -10,13 +10,13 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 1.1 | `generate(ReportRequest, ?array $subjects): Builder` | ✅ | ReportMaker.php L95-150 |
-| 1.2 | `generatePaginated(ReportRequest, int $perPage, ?array $subjects): LengthAwarePaginator` | ✅ | ReportMaker.php L156-158 |
-| 1.3 | `exportToCsv(ReportRequest, string $filename, ?array $subjects): StreamedResponse` | ✅ | ReportMaker.php L164-186 |
-| 1.4 | `toRawSql(Builder): string` | ✅ | ReportMaker.php L191-202 |
-| 1.5 | `explainJoinPlan(ReportRequest): JoinPlan` | ✅ | ReportMaker.php L207-220 |
-| 1.6 | `getGeneratedColumns(ReportRequest): array` | ✅ | ReportMaker.php L285-326 |
-| 1.7 | `buildScalarSubquery(VirtualAttributeRequest): string` | ✅ | ReportMaker.php L222-278 |
+| 1.1 | `generate(ReportRequest, ?array $subjects): Builder` | ✅ | ReportMaker.php L80-138 |
+| 1.2 | `generatePaginated(ReportRequest, int $perPage, ?array $subjects): LengthAwarePaginator` | ✅ | ReportMaker.php L141-143 |
+| 1.3 | `exportToCsv(ReportRequest, string $filename, ?array $subjects): StreamedResponse` | ✅ | ReportMaker.php L149-171 |
+| 1.4 | `toRawSql(Builder): string` | ✅ | ReportMaker.php L176-186 |
+| 1.5 | `explainJoinPlan(ReportRequest): JoinPlan` | ✅ | ReportMaker.php L192-207 |
+| 1.6 | `getGeneratedColumns(ReportRequest): array` | ✅ | ReportMaker.php L212-253 |
+| 1.7 | `buildScalarSubquery(VirtualAttributeRequest): string` | ✅ | Concerns/CompilesQueries.php L26-87 |
 
 ### Details
 
@@ -34,12 +34,12 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 2.1 | `getAvailableModels(): array` | ✅ | ReportMaker.php L530-534 |
-| 2.2 | `getAllApplicationModels(): array` | ✅ | ReportMaker.php L545-585 |
-| 2.3 | `getModelAttributes(string $modelClass): array` | ✅ | ReportMaker.php L824-848 |
-| 2.4 | `getModelRelationships(string $modelClass): array` | ✅ | ReportMaker.php L856-863 |
-| 2.5 | `getConnectedModels(string $modelClass): array` | ✅ | ReportMaker.php L875-878 |
-| 2.6 | `getMaxFilterDepth(): int` | ✅ | ReportMaker.php L520-523 |
+| 2.1 | `getAvailableModels(): array` | ✅ | Concerns/DiscoversSchema.php L68-72 |
+| 2.2 | `getAllApplicationModels(): array` | ✅ | Concerns/DiscoversSchema.php L83-127 |
+| 2.3 | `getModelAttributes(string $modelClass): array` | ✅ | Concerns/DiscoversSchema.php L131-156 |
+| 2.4 | `getModelRelationships(string $modelClass): array` | ✅ | Concerns/DiscoversSchema.php L163-170 |
+| 2.5 | `getConnectedModels(string $modelClass): array` | ✅ | Concerns/DiscoversSchema.php L182-184 |
+| 2.6 | `getMaxFilterDepth(): int` | ✅ | Concerns/DiscoversSchema.php L196-198 |
 
 ### Details
 
@@ -56,12 +56,12 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 3.1 | `saveReport(string, ReportRequest, ?int, string): SavedReport` | ✅ | ReportMaker.php L384-400 |
-| 3.2 | `loadAndGenerate(int, ?int): Builder` | ✅ | ReportMaker.php L407-426 |
-| 3.3 | `getSavedReports(): Collection` | ✅ | ReportMaker.php L402-405 |
-| 3.4 | `loadToEditor(int): ReportRequest` | ✅ | ReportMaker.php L470-478 |
-| 3.5 | `updateReport(int, string, ReportRequest, string, ?int): SavedReport` | ✅ | ReportMaker.php L480-495 |
-| 3.6 | `deleteReport(int, ?int): void` | ✅ | ReportMaker.php L497-509 |
+| 3.1 | `saveReport(string, ReportRequest, ?int, string): SavedReport` | ✅ | Concerns/ManagesReports.php L35-53 |
+| 3.2 | `loadAndGenerate(int, ?int): Builder` | ✅ | Concerns/ManagesReports.php L64-84 |
+| 3.3 | `getSavedReports(): Collection` | ✅ | Concerns/ManagesReports.php L56-58 |
+| 3.4 | `loadToEditor(int): ReportRequest` | ✅ | Concerns/ManagesReports.php L142-150 |
+| 3.5 | `updateReport(int, string, ReportRequest, string, ?int): SavedReport` | ✅ | Concerns/ManagesReports.php L155-172 |
+| 3.6 | `deleteReport(int, ?int): void` | ✅ | Concerns/ManagesReports.php L175-188 |
 
 ### Details
 
@@ -78,10 +78,10 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 4.1 | `assignReport(int, int, ?int): void` | ✅ | ReportMaker.php L435-445 |
-| 4.2 | `unassignReport(int, int, ?int): void` | ✅ | ReportMaker.php L447-457 |
-| 4.3 | `getAssignedReports(int): Collection` | ✅ | ReportMaker.php L459-468 |
-| 4.4 | `getReportLogs(int): Collection` | ✅ | ReportMaker.php L428-433 |
+| 4.1 | `assignReport(int, int, ?int): void` | ✅ | Concerns/ManagesReports.php L98-110 |
+| 4.2 | `unassignReport(int, int, ?int): void` | ✅ | Concerns/ManagesReports.php L113-125 |
+| 4.3 | `getAssignedReports(int): Collection` | ✅ | Concerns/ManagesReports.php L128-138 |
+| 4.4 | `getReportLogs(int): Collection` | ✅ | Concerns/ManagesReports.php L88-94 |
 
 ### Details
 
@@ -96,9 +96,9 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 5.1 | `restrictModel(string, ?int): void` | ✅ | ReportMaker.php L615-627 |
-| 5.2 | `unrestrictModel(string): void` | ✅ | ReportMaker.php L635-643 |
-| 5.3 | `getRestrictedModels(): array` | ✅ | ReportMaker.php L592-606 |
+| 5.1 | `restrictModel(string, ?int): void` | ✅ | Concerns/EnforcesSecurity.php L196-213 |
+| 5.2 | `unrestrictModel(string): void` | ✅ | Concerns/EnforcesSecurity.php L216-225 |
+| 5.3 | `getRestrictedModels(): array` | ✅ | Concerns/EnforcesSecurity.php L173-186 |
 
 ### Details
 
@@ -112,9 +112,9 @@
 
 | # | Method | Status | Source |
 |---|--------|--------|--------|
-| 6.1 | `restrictAttribute(string, string, Model, string): void` | ✅ | ReportMaker.php L1384-1396 |
-| 6.2 | `unrestrictAttribute(string, string, Model): void` | ✅ | ReportMaker.php L1401-1410 |
-| 6.3 | `getAttributeRestrictions(Model): array` | ✅ | ReportMaker.php L1415-1421 |
+| 6.1 | `restrictAttribute(string, string, Model, string): void` | ✅ | Concerns/EnforcesSecurity.php L229-243 |
+| 6.2 | `unrestrictAttribute(string, string, Model): void` | ✅ | Concerns/EnforcesSecurity.php L246-256 |
+| 6.3 | `getAttributeRestrictions(Model): array` | ✅ | Concerns/EnforcesSecurity.php L260-265 |
 
 ### Details
 
@@ -303,7 +303,7 @@
 7. `create_dynamic_attribute_restrictions_table` ✅
 
 ### Internal Constants
-*   `INTERNAL_MODELS` (L46-52): `SavedReport`, `ReportLog`, `RestrictedModel`, `AttributeRestriction`, `VirtualAttribute` — auto-excluded from reportable list unless `include_package_models` is enabled.
+*   `INTERNAL_MODELS` (ReportMaker.php L42-48): `SavedReport`, `ReportLog`, `RestrictedModel`, `AttributeRestriction`, `VirtualAttribute` — auto-excluded from reportable list unless `include_package_models` is enabled.
 
 ---
 
@@ -313,22 +313,22 @@
 
 | # | Method | Purpose | Source |
 |---|--------|---------|--------|
-| 17.1 | `ensureModelsLoaded()` | Lazy-loads allowed models on first API call | L70-93 |
-| 17.2 | `ensureModelAllowed(string)` | Guard: throws `ReportMakerException` if model is restricted | L892-897 |
-| 17.3 | `resolveAttributeRestrictions(?array)` | Resolves ALS rules for current user/subjects | L688-729 |
-| 17.4 | `validateSecurity(ReportRequest)` | Checks all attributes in request against blocked rules | L754-782 |
-| 17.5 | `validateFilterDepth(?FilterNode, string, int)` | Recursive depth check against `max_filter_depth` config | L795-816 |
-| 17.6 | `extractVirtualAttributeDependencies(ReportRequest, array&)` | Merges VA dependency models into targetModels | L328-350 |
-| 17.7 | `discoverLinks(): array` | Builds bidirectional relationship graph (cached) | L912-933 |
-| 17.8 | `getForwardRelations(): array` | Phase 1: Reflection-based Eloquent relationship scan | L949-1014 |
-| 17.9 | `getReverseRelations(array): array` | Phase 2: Synthesizes missing inverse edges | L1050-1100 |
-| 17.10 | `planJoins(string, array, array, string): JoinPlan` | BFS shortest-path → JoinStep conversion | L1110-1146 |
-| 17.11 | `findShortestPath(string, string, array): ?array` | BFS pathfinder with visited guard | L1168-1194 |
-| 17.12 | `buildInnerQuery(string, JoinPlan, array, ?FilterNode): Builder` | Constructs the base SELECT with JOINs | L1196-1256 |
-| 17.13 | `buildOuterQuery(string, Builder, array, array, ?FilterNode, array): Builder` | Wraps inner query for GROUP BY/HAVING | L1258-1302 |
-| 17.14 | `applyFilters(Builder, FilterNode, array, string, string, ?string): void` | Recursive filter application (WHERE/HAVING) | L1304-1379 |
-| 17.15 | `logAction(?int, ?int, string, ?array): void` | Writes to `dynamic_report_logs` | L374-382 |
-| 17.16 | `extractClassFromFile(string): ?string` | Token-based PHP class extractor for auto-discovery | L645-683 |
+| 17.1 | `ensureModelsLoaded()` | Lazy-loads allowed models on first API call | Concerns/DiscoversSchema.php L28-53 |
+| 17.2 | `ensureModelAllowed(string)` | Guard: throws `ReportMakerException` if model is restricted | Concerns/DiscoversSchema.php L56-60 |
+| 17.3 | `resolveAttributeRestrictions(?array)` | Resolves ALS rules for current user/subjects | Concerns/EnforcesSecurity.php L29-68 |
+| 17.4 | `validateSecurity(ReportRequest)` | Checks all attributes in request against blocked rules | Concerns/EnforcesSecurity.php L104-130 |
+| 17.5 | `validateFilterDepth(?FilterNode, string, int)` | Recursive depth check against `max_filter_depth` config | Concerns/EnforcesSecurity.php L145-164 |
+| 17.6 | `extractVirtualAttributeDependencies(ReportRequest, array&)` | Merges VA dependency models into targetModels | Concerns/ResolvesVirtualAttributes.php L22-46 |
+| 17.7 | `discoverLinks(): array` | Builds bidirectional relationship graph (cached) | Concerns/DiscoversRelationships.php L38-60 |
+| 17.8 | `getForwardRelations(): array` | Phase 1: Reflection-based Eloquent relationship scan | Concerns/DiscoversRelationships.php L75-146 |
+| 17.9 | `getReverseRelations(array): array` | Phase 2: Synthesizes missing inverse edges | Concerns/DiscoversRelationships.php L176-227 |
+| 17.10 | `planJoins(string, array, array, string): JoinPlan` | BFS shortest-path → JoinStep conversion | Concerns/DiscoversRelationships.php L236-279 |
+| 17.11 | `findShortestPath(string, string, array): ?array` | BFS pathfinder with visited guard | Concerns/DiscoversRelationships.php L294-321 |
+| 17.12 | `buildInnerQuery(string, JoinPlan, array, ?FilterNode): Builder` | Constructs the base SELECT with JOINs | Concerns/CompilesQueries.php L89-152 |
+| 17.13 | `buildOuterQuery(string, Builder, array, array, ?FilterNode, array): Builder` | Wraps inner query for GROUP BY/HAVING | Concerns/CompilesQueries.php L154-199 |
+| 17.14 | `applyFilters(Builder, FilterNode, array, string, string, ?string): void` | Recursive filter application (WHERE/HAVING) | Concerns/CompilesQueries.php L206-282 |
+| 17.15 | `logAction(?int, ?int, string, ?array): void` | Writes to `dynamic_report_logs` | Concerns/ManagesReports.php L22-30 |
+| 17.16 | `extractClassFromFile(string): ?string` | Token-based PHP class extractor for auto-discovery | Concerns/DiscoversSchema.php L219-256 |
 
 ---
 
@@ -357,11 +357,12 @@
 
 > **Conclusion**: All 104 components are fully implemented in source code. No incomplete or stub implementations were found. The public API surface consists of 37 methods across `ReportMaker` (via `DynamicReport` Facade), plus 21 Fluent Builder methods and 6 Service methods. The internal engine comprises 16 private methods powering BFS graph construction, security enforcement, and query compilation.
 
-### Source File Inventory (33 files)
+### Source File Inventory (39 files)
 
 | Directory | Files | Total Lines |
 |-----------|-------|-------------|
-| `src/` (root) | `ReportMaker.php` | 1,422 |
+| `src/` (root) | `ReportMaker.php` | 254 |
+| `src/Concerns/` | 6 trait files | 1,386 |
 | `src/Builders/` | 3 files | 259 |
 | `src/Contracts/` | 1 file | 23 |
 | `src/Exceptions/` | 2 files | 22 |
@@ -372,5 +373,5 @@
 | `src/Registry/` | 1 file | 26 |
 | `src/Services/` | 3 files | 203 |
 | `src/Types/` | 13 files | 340 |
-| **Total** | **33 files** | **2,684 lines** |
+| **Total** | **39 files** | **2,902 lines** |
 

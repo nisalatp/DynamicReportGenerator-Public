@@ -3,6 +3,59 @@ title Dynamic Report Generator - Class Diagram
 
 package "Nisalatp\\DynamicReportGenerator" {
 
+    package "Concerns" {
+        class DiscoversSchema <<trait>> {
+            + getAvailableModels(): array
+            + getAllApplicationModels(): array
+            + getModelAttributes(modelClass: string): array
+            + getModelRelationships(modelClass: string): array
+            + getConnectedModels(modelClass: string): array
+            + getMaxFilterDepth(): int
+        }
+
+        class DiscoversRelationships <<trait>> {
+            - discoverLinks(): array
+            - planJoins(base: string, targets: array, links: array): JoinPlan
+            - findShortestPath(start: string, end: string, links: array): array|null
+        }
+
+        class CompilesQueries <<trait>> {
+            + buildScalarSubquery(request: VirtualAttributeRequest): string
+            - buildInnerQuery(base: string, plan: JoinPlan, selects: array, filters: FilterNode|null): Builder
+            - buildOuterQuery(...): Builder
+        }
+
+        class EnforcesSecurity <<trait>> {
+            + getRestrictedModels(): array
+            + restrictModel(modelClass: string, userId: int|null): void
+            + unrestrictModel(modelClass: string): void
+            + restrictAttribute(modelClass: string, attribute: string, subject: Model, type: string): void
+            + unrestrictAttribute(modelClass: string, attribute: string, subject: Model): void
+            + getAttributeRestrictions(subject: Model): array
+            - resolveAttributeRestrictions(subjects: array|null): void
+            - validateSecurity(request: ReportRequest): void
+            - validateFilterDepth(node: FilterNode|null, context: string, depth: int): void
+        }
+
+        class ManagesReports <<trait>> {
+            + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
+            + getSavedReports(): Collection
+            + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
+            + loadToEditor(reportId: int): ReportRequest
+            + updateReport(reportId: int, name: string, request: ReportRequest, description: string, userId: int): SavedReport
+            + deleteReport(reportId: int, userId: int): void
+            + assignReport(reportId: int, userId: int, actionByUserId: int): void
+            + unassignReport(reportId: int, userId: int, actionByUserId: int): void
+            + getAssignedReports(userId: int): Collection
+            + getReportLogs(savedReportId: int): Collection
+            - logAction(savedReportId: int, userId: int, action: string, details: array): void
+        }
+
+        class ResolvesVirtualAttributes <<trait>> {
+            - extractVirtualAttributeDependencies(request: ReportRequest, targetModels: array&): void
+        }
+    }
+
     class ReportMaker {
         - {static} INTERNAL_MODELS: array
         - allowedModels: array|null
@@ -18,49 +71,15 @@ package "Nisalatp\\DynamicReportGenerator" {
         + toRawSql(query: Builder): string
         + explainJoinPlan(request: ReportRequest): JoinPlan
         + getGeneratedColumns(request: ReportRequest): array
-        + buildScalarSubquery(request: VirtualAttributeRequest): string
-        __ Schema Discovery __
-        + getAvailableModels(): array
-        + getAllApplicationModels(): array
-        + getModelAttributes(modelClass: string): array
-        + getModelRelationships(modelClass: string): array
-        + getConnectedModels(modelClass: string): array
-        + getMaxFilterDepth(): int
-        __ Persistence __
-        + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
-        + getSavedReports(): Collection
-        + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
-        + loadToEditor(reportId: int): ReportRequest
-        + updateReport(reportId: int, name: string, request: ReportRequest, description: string, userId: int): SavedReport
-        + deleteReport(reportId: int, userId: int): void
-        __ Access Control __
-        + assignReport(reportId: int, userId: int, actionByUserId: int): void
-        + unassignReport(reportId: int, userId: int, actionByUserId: int): void
-        + getAssignedReports(userId: int): Collection
-        + getReportLogs(savedReportId: int): Collection
-        __ Model Security __
-        + getRestrictedModels(): array
-        + restrictModel(modelClass: string, userId: int|null): void
-        + unrestrictModel(modelClass: string): void
-        __ Attribute Security __
-        + restrictAttribute(modelClass: string, attribute: string, subject: Model, type: string): void
-        + unrestrictAttribute(modelClass: string, attribute: string, subject: Model): void
-        + getAttributeRestrictions(subject: Model): array
-        __ Private Internals __
-        - ensureModelsLoaded(): void
-        - ensureModelAllowed(modelClass: string): void
-        - discoverLinks(): array
-        - getForwardRelations(): array
-        - getReverseRelations(forwardLinks: array): array
-        - planJoins(base: string, targets: array, links: array): JoinPlan
-        - findShortestPath(start: string, end: string, links: array): array|null
-        - buildInnerQuery(base: string, plan: JoinPlan, selects: array, filters: FilterNode|null): Builder
-        - buildOuterQuery(...): Builder
-        - resolveAttributeRestrictions(subjects: array|null): void
-        - validateSecurity(request: ReportRequest): void
-        - validateFilterDepth(node: FilterNode|null, context: string, depth: int): void
-        - logAction(savedReportId: int, userId: int, action: string, details: array): void
     }
+
+    ReportMaker ..|> DiscoversSchema : "uses"
+    ReportMaker ..|> DiscoversRelationships : "uses"
+    ReportMaker ..|> CompilesQueries : "uses"
+    ReportMaker ..|> EnforcesSecurity : "uses"
+    ReportMaker ..|> ManagesReports : "uses"
+    ReportMaker ..|> ResolvesVirtualAttributes : "uses"
+
 
     package "Http\\Requests" {
         class ReportBuilderRequest {

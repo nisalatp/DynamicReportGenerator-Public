@@ -12,6 +12,7 @@ The system is built using a **Decoupled Client-Server Service Layer** within an 
 ### 1.1 The Decoupled Package Paradigm
 Rather than building the reporting logic directly into the host application, this system is designed as an independent, installable **Laravel Package**. 
 - **Why?**: This guarantees high cohesion and low coupling. The host application only interacts with the engine via strict public APIs (the `DynamicReport` Facade). The engine has no knowledge of the host application's UI, session state, or authentication logic.
+- **Orchestrator & Trait Pattern**: The `ReportMaker` engine acts as a slim orchestrator that delegates its responsibilities to 6 single-purpose traits in the `Concerns/` directory (e.g., `CompilesQueries`, `DiscoversRelationships`). This ensures massive functionality without creating a 1,400+ line monolith.
 - **Service Provider Pattern**: The package boots itself via the `DynamicReportGeneratorServiceProvider`, which registers configurations, database migrations, and binds the `ReportMaker` and `VirtualAttributeRegistry` classes as Singleton services into Laravel's IoC (Inversion of Control) container.
 
 ### 1.2 Facade Pattern
@@ -138,7 +139,7 @@ When processing aggregated calculations (e.g., `SUM`, `COUNT`), the `Aggregate` 
 
 ### 8.2 Filter Nesting Depth Validation
 Deeply nested AND/OR filter groups can produce complex SQL and represent a potential abuse vector.
-- **The Solution**: The `validateFilterDepth()` method recursively measures the nesting depth of `FilterGroup` nodes in both `WHERE` (innerFilters) and `HAVING` (outerFilters) trees. If the depth exceeds the configured `max_filter_depth` limit (default: 3), a `ReportMakerException` is thrown with a descriptive error indicating the clause type and the configured limit.
+- **The Solution**: The `validateFilterDepth()` method (inside `Concerns/EnforcesSecurity.php`) recursively measures the nesting depth of `FilterGroup` nodes in both `WHERE` (innerFilters) and `HAVING` (outerFilters) trees. If the depth exceeds the configured `max_filter_depth` limit (default: 3), a `ReportMakerException` is thrown with a descriptive error indicating the clause type and the configured limit.
 - **Frontend Alignment**: The same limit is exposed to frontends via `getMaxFilterDepth()`, enabling a consistent enforcement boundary across the full stack.
 
 ### 8.3 Execution Row Limit

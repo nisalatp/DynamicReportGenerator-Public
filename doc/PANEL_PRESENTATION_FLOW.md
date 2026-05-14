@@ -34,7 +34,7 @@ The user clicks "Generate Report". AlpineJS sends a JSON POST request to the ser
 The host application passes the safe `ReportRequest` AST into the Dynamic Report Engine. The engine first validates security constraints, then scans the AST for any selected Virtual Attributes (like the user's requested `Total Spend`). 
 
 **Implementation Details:**
-- **File**: `fyp/public/src/ReportMaker.php`
+- **File**: `fyp/public/src/Concerns/DiscoversSchema.php`
 - **Functions**: `ensureModelAllowed()`, `resolveAttributeRestrictions()`, `validateSecurity()`, `validateFilterDepth()`, `extractVirtualAttributeDependencies()`
 - **Mechanism**: 
   1. The engine verifies the base model is allowed (not restricted, not an internal package model, and present in the whitelist if configured).
@@ -49,7 +49,7 @@ The host application passes the safe `ReportRequest` AST into the Dynamic Report
 The engine now knows it needs to query the `Users` table, but it also needs to join the `Addresses` table (for the "City" column) and the `Orders` table (for the "Total Spend" subquery dependency). 
 
 **Implementation Details:**
-- **File**: `fyp/public/src/ReportMaker.php`
+- **File**: `fyp/public/src/Concerns/DiscoversRelationships.php`
 - **Functions**: `discoverLinks()`, `getForwardRelations()`, `getReverseRelations()`, `findShortestPath()`, and `planJoins()`
 - **Mechanism**: 
   1. The engine first checks its **in-memory cache** for the bidirectional graph. If not cached, it proceeds to Phase 1.
@@ -65,7 +65,7 @@ The engine now knows it needs to query the `Users` table, but it also needs to j
 The engine constructs the `SELECT` and `WHERE` clauses. Instead of querying all the user's orders and running a `foreach` loop in PHP to calculate the total spend, it pushes the logic down to the database.
 
 **Implementation Details:**
-- **File**: `fyp/public/src/ReportMaker.php`
+- **File**: `fyp/public/src/Concerns/CompilesQueries.php`
 - **Functions**: `buildInnerQuery()`, `applyFilters()`
 - **Mechanism**: When the compiler hits the `Total Spend` attribute, it injects the raw SQL fragment (e.g., `(SELECT SUM(amount) FROM orders WHERE orders.user_id = users.id)`) directly into the Query Builder using `DB::raw()`. It does the same for the filter (`HAVING Total Spend > 1000`).
 
@@ -75,7 +75,7 @@ The engine constructs the `SELECT` and `WHERE` clauses. Instead of querying all 
 The engine finalizes the Laravel Query Builder instance, applies the configurable `max_rows` safety limit, and the host application executes the query against the RDBMS. 
 
 **Implementation Details:**
-- **File**: `fyp/public/src/ReportMaker.php`
+- **File**: `fyp/public/src/Concerns/EnforcesSecurity.php`
 - **Function**: `generate()` returns an `Illuminate\Database\Query\Builder`.
 - **Mechanism**: Before returning, the engine applies `->limit(max_rows)` as a safety net (default: 5000). Because of the Subquery Pushdown, MySQL/SQLite executes the C-level aggregations directly on the database hardware. The database returns a flat, paginated array of results. The PHP application maintains an O(1) memory footprint because it never hydrated thousands of Eloquent models. The array is returned as JSON to the frontend, and the End-User instantly sees their completed report.
   
