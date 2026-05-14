@@ -7,14 +7,14 @@ This example demonstrates how an external Java application can programmatically 
 ```java
 public class RegisterVARequest {
     public String name;
-    public String model;
-    public String type;
+    public String base_model;
+    public String return_type;
     public String sql_fragment;
     
-    public RegisterVARequest(String name, String model, String type, String sql_fragment) {
+    public RegisterVARequest(String name, String base_model, String return_type, String sql_fragment) {
         this.name = name;
-        this.model = model;
-        this.type = type;
+        this.base_model = base_model;
+        this.return_type = return_type;
         this.sql_fragment = sql_fragment;
     }
 }
@@ -80,17 +80,17 @@ The admin uses the Java service above to register the two VAs. Once registered, 
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -101,7 +101,7 @@ The admin uses the Java service above to register the two VAs. Once registered, 
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -111,13 +111,13 @@ The admin uses the Java service above to register the two VAs. Once registered, 
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -131,13 +131,13 @@ The admin uses the Java service above to register the two VAs. Once registered, 
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }

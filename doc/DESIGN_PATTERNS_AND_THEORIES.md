@@ -46,12 +46,12 @@ Design patterns are proven, standardized solutions to common problems in softwar
 ### 3.1 Data Transfer Object (DTO) Pattern
 - **The Concept**: Passing raw arrays of data between functions is dangerous because you never know exactly what the array contains. A DTO is a strict, rigid container for data.
 - **Example**: Instead of passing an array `['name' => 'John', 'age' => 30]`, you create a `PersonDTO` class that *requires* a string name and an integer age.
-- **How We Use It**: The incoming JSON payload is immediately converted into strict DTOs (`ReportRequest`, `Aggregate`, `Sort`). The `Aggregate` DTO, for example, has a strict whitelist that only accepts `SUM`, `COUNT`, `AVG`, `MAX`, `MIN`. If a hacker tries to send `DROP TABLE`, the DTO strictly rejects it, preventing SQL injection.
+- **How We Use It**: The incoming JSON payload is immediately converted into strict DTOs (`ReportRequest`, `Aggregate`, `Sort`). The `Aggregate` DTO, for example, has a strict whitelist that only accepts `SUM`, `COUNT`, `AVG`, `MAX`, `MIN`. If a hacker tries to send `DROP TABLE`, the DTO strictly rejects it, preventing SQL injection. Similarly, the `FilterLeaf` DTO validates operators and the `Sort` DTO restricts directions to `ASC`/`DESC`.
 
 ### 3.2 Composite Pattern
 - **The Concept**: The Composite pattern allows you to treat individual objects and groups of objects in the exact same way by placing them in a tree structure.
 - **Example**: Think of a computer file system. A Folder can contain Files, but a Folder can also contain *other* Folders. Whether you are deleting a single File or a Folder containing 100 nested Folders, the operating system handles the "delete" command gracefully.
-- **How We Use It**: We use this for SQL `WHERE` clauses. A `FilterLeaf` is a single rule (e.g., `age > 18`). A `FilterGroup` is a folder that holds multiple rules using `AND` / `OR` logic. Because of the Composite Pattern, our engine can parse infinitely nested, massively complex SQL filter logic using a simple recursive function.
+- **How We Use It**: We use this for SQL `WHERE` clauses. A `FilterLeaf` is a single rule (e.g., `age > 18`). A `FilterGroup` is a folder that holds multiple rules using `AND` / `OR` logic. Because of the Composite Pattern, our engine can parse infinitely nested, massively complex SQL filter logic using a simple recursive function. The maximum nesting depth is configurable via `max_filter_depth` (default: 3) and enforced both server-side and in the frontend UI.
 
 ### 3.3 Singleton Pattern
 - **The Concept**: The Singleton pattern ensures that a class only ever has **one** instance (one object) created in memory during the entire lifecycle of the application.
@@ -66,4 +66,17 @@ Design patterns are proven, standardized solutions to common problems in softwar
 ### 3.5 Broker Pattern
 - **The Concept**: A Broker acts as a middleman that orchestrates communication between decoupled systems that don't know how to talk to each other directly.
 - **Example**: A stockbroker. You want to buy Apple stock, but you don't know who is currently selling it. You tell your broker, and the broker finds the seller and executes the trade for you.
-- **How We Use It**: A Vue.js frontend cannot physically read the backend PHP Database Schema. The `ReportMaker` engine acts as a Schema Discovery Broker. The frontend asks the engine, "What columns are available for the User model?" The engine (the broker) inspects the database, merges it with Virtual Attributes, and returns a clean, unified JSON list to the frontend.
+- **How We Use It**: A Vue.js frontend cannot physically read the backend PHP Database Schema. The `ReportMaker` engine acts as a Schema Discovery Broker. The frontend asks the engine, "What columns are available for the User model?" The engine (the broker) inspects the database, merges it with Virtual Attributes, and returns a clean, unified JSON list to the frontend. It also exposes configuration values like `getMaxFilterDepth()` so the frontend can enforce consistent rules.
+
+### 3.6 Builder Pattern (Fluent Interface)
+- **The Concept**: The Builder pattern constructs a complex object step by step through a sequence of method calls, instead of requiring all parameters at once in a massive constructor.
+- **Example**: Think of ordering a custom sandwich at a deli counter. Instead of describing your entire sandwich in one sentence, you tell the worker step by step: "Start with whole wheat... add turkey... add lettuce... add mustard." Each step builds on the previous one.
+- **How We Use It**: The `ReportBuilder` and `FilterBuilder` allow developers to construct complex report configurations programmatically using fluent method chaining:
+  ```php
+  $request = ReportBuilder::forModel(User::class)
+      ->select(User::class, 'name', 'string')
+      ->aggregate(Order::class, 'total', 'SUM', 'decimal', 'total_orders')
+      ->filter(fn($f) => $f->where(User::class, 'active', '=', true, 'boolean'))
+      ->build();
+  ```
+  This pattern is also used in `VirtualAttributeBuilder` to register Virtual Attributes via a declarative, step-by-step API.

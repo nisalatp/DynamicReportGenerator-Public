@@ -22,13 +22,13 @@ public class ReportPayload {
 }
 
 public class Attribute {
-    public String modelClass;
+    public String model;
     public String column;
     public String type;
     public boolean isVirtual = false;
     
-    public Attribute(String modelClass, String column, String type) {
-        this.modelClass = modelClass;
+    public Attribute(String model, String column, String type) {
+        this.model = model;
         this.column = column;
         this.type = type;
     }
@@ -161,17 +161,17 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -182,7 +182,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -192,13 +192,13 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -212,13 +212,13 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }
@@ -226,7 +226,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "attribute": { "model": "Order", "column": "total_revenue", "isVirtual": true },
         "direction": "DESC"
     }
   ]

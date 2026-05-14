@@ -8,6 +8,7 @@ class VirtualAttributeBuilder
 {
     private string $name;
     private string $baseModel;
+    private string $returnType = 'string';
     private string $sqlFragment;
     private array $dependencies = [];
 
@@ -24,6 +25,12 @@ class VirtualAttributeBuilder
     public function forBaseModel(string $modelClass): self
     {
         $this->baseModel = $modelClass;
+        return $this;
+    }
+
+    public function withReturnType(string $type): self
+    {
+        $this->returnType = $type;
         return $this;
     }
 
@@ -44,7 +51,11 @@ class VirtualAttributeBuilder
         // Use updateOrCreate so running it repeatedly doesn't fail
         return VirtualAttribute::updateOrCreate(
             ['base_model' => $this->baseModel, 'name' => $this->name],
-            ['sql_fragment' => $this->sqlFragment, 'dependencies' => $this->dependencies]
+            [
+                'return_type' => $this->returnType,
+                'sql_fragment' => $this->sqlFragment, 
+                'dependencies' => $this->dependencies
+            ]
         );
     }
 }

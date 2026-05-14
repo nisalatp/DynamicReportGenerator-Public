@@ -4,45 +4,62 @@ title Dynamic Report Generator - Class Diagram
 package "Nisalatp\\DynamicReportGenerator" {
 
     class ReportMaker {
+        - {static} INTERNAL_MODELS: array
         - allowedModels: array|null
         - allApplicationModels: array|null
         - restrictedModels: array|null
         - resolvedRestrictions: array
         - cachedLinks: array|null
+        - vaRegistry: VirtualAttributeRegistry|null
+        __ Core Engine __
         + generate(request: ReportRequest, subjects: array|null): Builder
         + generatePaginated(request: ReportRequest, perPage: int, subjects: array|null): LengthAwarePaginator
         + exportToCsv(request: ReportRequest, filename: string, subjects: array|null): StreamedResponse
         + toRawSql(query: Builder): string
         + explainJoinPlan(request: ReportRequest): JoinPlan
+        + getGeneratedColumns(request: ReportRequest): array
+        + buildScalarSubquery(request: VirtualAttributeRequest): string
+        __ Schema Discovery __
         + getAvailableModels(): array
         + getAllApplicationModels(): array
+        + getModelAttributes(modelClass: string): array
+        + getModelRelationships(modelClass: string): array
+        + getConnectedModels(modelClass: string): array
+        + getMaxFilterDepth(): int
+        __ Persistence __
+        + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
+        + getSavedReports(): Collection
+        + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
+        + loadToEditor(reportId: int): ReportRequest
+        + updateReport(reportId: int, name: string, request: ReportRequest, description: string, userId: int): SavedReport
+        + deleteReport(reportId: int, userId: int): void
+        __ Access Control __
+        + assignReport(reportId: int, userId: int, actionByUserId: int): void
+        + unassignReport(reportId: int, userId: int, actionByUserId: int): void
+        + getAssignedReports(userId: int): Collection
+        + getReportLogs(savedReportId: int): Collection
+        __ Model Security __
         + getRestrictedModels(): array
         + restrictModel(modelClass: string, userId: int|null): void
         + unrestrictModel(modelClass: string): void
+        __ Attribute Security __
         + restrictAttribute(modelClass: string, attribute: string, subject: Model, type: string): void
         + unrestrictAttribute(modelClass: string, attribute: string, subject: Model): void
         + getAttributeRestrictions(subject: Model): array
-        + getConnectedModels(modelClass: string): array
-        + saveReport(name: string, request: ReportRequest, userId: int, description: string): SavedReport
-        + loadAndGenerate(savedReportId: int, executedByUserId: int): Builder
-        + updateReport(reportId: int, name: string, request: ReportRequest, description: string): SavedReport
-        + deleteReport(reportId: int): void
-        + assignReport(reportId: int, userId: int): void
-        + unassignReport(reportId: int, userId: int): void
-        + getSavedReports(): Collection
-        + getAssignedReports(userId: int): Collection
-        + getReportLogs(savedReportId: int): Collection
-        - logAction(savedReportId: int, userId: int, action: string, details: array): void
+        __ Private Internals __
+        - ensureModelsLoaded(): void
+        - ensureModelAllowed(modelClass: string): void
         - discoverLinks(): array
         - getForwardRelations(): array
         - getReverseRelations(forwardLinks: array): array
         - planJoins(base: string, targets: array, links: array): JoinPlan
         - findShortestPath(start: string, end: string, links: array): array|null
-        - buildInnerQuery(...)
-        - buildOuterQuery(...)
-        - ensureModelsLoaded(): void
+        - buildInnerQuery(base: string, plan: JoinPlan, selects: array, filters: FilterNode|null): Builder
+        - buildOuterQuery(...): Builder
         - resolveAttributeRestrictions(subjects: array|null): void
         - validateSecurity(request: ReportRequest): void
+        - validateFilterDepth(node: FilterNode|null, context: string, depth: int): void
+        - logAction(savedReportId: int, userId: int, action: string, details: array): void
     }
 
     package "Http\\Requests" {
@@ -69,6 +86,55 @@ package "Nisalatp\\DynamicReportGenerator" {
         }
     }
 
+    package "Builders" {
+        class ReportBuilder {
+            - baseModel: string
+            - targetModels: array
+            - selectedAttributes: array
+            - groupBys: array
+            - aggregates: array
+            - sorts: array
+            - innerFilterBuilder: FilterBuilder|null
+            - outerFilterBuilder: FilterBuilder|null
+            + {static} forModel(modelClass: string): ReportBuilder
+            + withTarget(modelClass: string): ReportBuilder
+            + select(model: string, column: string, type: string, isVirtual: bool, alias: string|null): ReportBuilder
+            + groupBy(model: string, column: string, type: string): ReportBuilder
+            + aggregate(model: string, column: string, function: string, type: string, alias: string|null): ReportBuilder
+            + filter(callback: Closure): ReportBuilder
+            + having(callback: Closure): ReportBuilder
+            + build(): ReportRequest
+        }
+
+        class FilterBuilder {
+            - conditions: array
+            - logic: string
+            + where(model: string, column: string, operator: string, value: mixed, type: string): FilterBuilder
+            + orWhere(model: string, column: string, operator: string, value: mixed, type: string): FilterBuilder
+            + whereNull(model: string, column: string, type: string): FilterBuilder
+            + whereNotNull(model: string, column: string, type: string): FilterBuilder
+            + whereIn(model: string, column: string, values: array, type: string): FilterBuilder
+            + whereBetween(model: string, column: string, values: array, type: string): FilterBuilder
+            + nested(callback: Closure, logic: string): FilterBuilder
+            + orNested(callback: Closure): FilterBuilder
+            + build(): FilterNode|null
+        }
+
+        class VirtualAttributeBuilder {
+            - name: string
+            - baseModel: string
+            - returnType: string
+            - sqlFragment: string
+            - dependencies: array
+            + {static} create(name: string): VirtualAttributeBuilder
+            + forBaseModel(modelClass: string): VirtualAttributeBuilder
+            + withReturnType(type: string): VirtualAttributeBuilder
+            + withSqlFragment(sql: string): VirtualAttributeBuilder
+            + dependsOn(targetModelClasses: array): VirtualAttributeBuilder
+            + register(): VirtualAttribute
+        }
+    }
+
     package "Models" {
         class SavedReport {
             + id: int
@@ -89,6 +155,7 @@ package "Nisalatp\\DynamicReportGenerator" {
             + id: int
             + name: string
             + base_model: string
+            + return_type: string
             + sql_fragment: string
             + dependencies: array
         }
@@ -112,25 +179,9 @@ package "Nisalatp\\DynamicReportGenerator" {
 
     package "Registry" {
         class VirtualAttributeRegistry {
-            - attributes: Collection
-            + {static} getInstance(): VirtualAttributeRegistry
-            + load(): void
-            + get(name: string): VirtualAttribute|null
-            + getAll(): Collection
-        }
-    }
-
-    package "Builders" {
-        class VirtualAttributeBuilder {
-            - name: string
-            - baseModel: string
-            - sqlFragment: string
-            - dependencies: array
-            + {static} create(name: string): VirtualAttributeBuilder
-            + forBaseModel(modelClass: string): VirtualAttributeBuilder
-            + withSqlFragment(sql: string): VirtualAttributeBuilder
-            + dependsOn(targetModelClasses: array): VirtualAttributeBuilder
-            + register(): VirtualAttribute
+            - attributes: Collection|null
+            + findByName(baseModel: string, name: string): VirtualAttribute|null
+            + getForModel(baseModel: string): Collection
         }
     }
 
@@ -150,10 +201,10 @@ package "Nisalatp\\DynamicReportGenerator" {
             + baseModel: string
             + targetModels: array
             + selectedAttributes: array
-            + innerFilters: FilterNode
+            + innerFilters: FilterNode|null
             + groupBys: array
             + aggregates: array
-            + outerFilters: FilterNode
+            + outerFilters: FilterNode|null
             + sorts: array
             + toJson(): string
             + {static} fromJson(json: string): ReportRequest
@@ -179,6 +230,7 @@ package "Nisalatp\\DynamicReportGenerator" {
         }
 
         class FilterLeaf implements FilterNode {
+            - {static} ALLOWED_OPERATORS: array
             + attribute: Attribute
             + operator: string
             + value: mixed
@@ -189,25 +241,36 @@ package "Nisalatp\\DynamicReportGenerator" {
             + column: string
             + type: string
             + isVirtual: boolean
-            + alias: string
+            + jsonPath: string|null
+            + alias: string|null
+            + toArray(): array
+        }
+
+        class GroupBy {
+            + attribute: Attribute
+            + toArray(): array
         }
 
         class Sort {
+            - {static} ALLOWED_DIRECTIONS: array
             + attribute: Attribute
             + direction: string
+            + toArray(): array
         }
 
         class Aggregate {
+            - {static} ALLOWED_FUNCTIONS: array
             + attribute: Attribute
             + function: string
-            + alias: string
-            - ALLOWED_FUNCTIONS: array
+            + alias: string|null
+            + toArray(): array
         }
 
         class ReportSerializer {
             + toJson(request: ReportRequest): string
             + fromJson(json: string): ReportRequest
             - parseFilterNode(data: array): FilterNode
+            - parseAttribute(data: array): Attribute
         }
 
         class ModelLink {
@@ -218,6 +281,13 @@ package "Nisalatp\\DynamicReportGenerator" {
             + localKey: string
             + methodName: string
             + direction: string = "forward"
+        }
+
+        class ModelInfo {
+            + modelClass: string
+            + table: string
+            + primaryKey: string
+            + casts: array
         }
 
         class JoinStep {
@@ -237,20 +307,25 @@ package "Nisalatp\\DynamicReportGenerator" {
         }
     }
 
+    ' === Relationships ===
     ReportMaker --> ReportRequest : "consumes"
     ReportMaker --> SavedReport : "manages"
     ReportMaker --> ReportLog : "creates"
     ReportMaker --> RestrictedModel : "queries"
     ReportMaker --> AttributeRestriction : "evaluates"
     ReportMaker --> DynamicReportSubject : "resolves"
+    ReportMaker ..> ReportMakerException : "throws"
     ReportMaker ..> ReportMakerSecurityException : "throws"
     ReportMaker --> VirtualAttributeRegistry : "resolves va: columns"
     ReportMaker --> ModelLink : "discovers (forward + reverse)"
     ReportMaker --> JoinPlan : "generates via BFS"
+    ReportMaker --> VirtualAttributeRequest : "consumes (subqueries)"
     JoinPlan o-- JoinStep : "contains"
+    ReportBuilder ..> ReportRequest : "builds"
+    ReportBuilder --> FilterBuilder : "delegates filter construction"
+    FilterBuilder ..> FilterNode : "builds"
     VirtualAttributeBuilder ..> VirtualAttribute : "creates/updates"
     VirtualAttributeRegistry o-- VirtualAttribute : "caches"
-    ReportMaker --> VirtualAttributeRequest : "consumes (subqueries)"
     ReportRequest *-- FilterNode
     VirtualAttributeRequest *-- FilterNode
     FilterGroup o-- FilterNode

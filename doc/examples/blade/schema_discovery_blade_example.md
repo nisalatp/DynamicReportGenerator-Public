@@ -22,9 +22,14 @@ Route::get('/api/schema/models/{model}/relationships', function ($model) {
     return response()->json(DynamicReport::getModelRelationships($model));
 });
 
-// NEW: Get all connected models (both forward-declared and reverse-synthesized)
+// Get all connected models (both forward-declared and reverse-synthesized)
 Route::get('/api/schema/models/{model}/connected', function ($model) {
     return response()->json(DynamicReport::getConnectedModels($model));
+});
+
+// Expose the configured maximum filter nesting depth to frontends
+Route::get('/api/schema/config/max-filter-depth', function () {
+    return response()->json(['max_filter_depth' => DynamicReport::getMaxFilterDepth()]);
 });
 ```
 
@@ -126,5 +131,6 @@ When the user selects `Order` from the dropdown, the frontend might render the f
 **Discoverable Relationships**
 - `User` (BelongsTo via user) <span style="color: green;">(declared)</span>
 - `Product` (BelongsToMany via products) <span style="color: green;">(declared)</span>
+- `OrderItem` (HasMany via orderItems) <span style="color: orange;">(reverse-inferred)</span>
 
 > **Note on Bidirectional Discovery**: The `getModelRelationships()` and `getConnectedModels()` methods now return both explicitly declared relationships and reverse-inferred relationships. For example, if `Order` only declares `belongsTo(User)` but `User` does not declare `hasMany(Order)`, the engine will still show the `Order` relationship on `User`'s connected models list with `direction: 'reverse'`. This ensures the frontend can always display complete connectivity information regardless of which side declared the Eloquent method.

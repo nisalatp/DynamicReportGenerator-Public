@@ -40,8 +40,8 @@ public class GovernanceClient {
     /**
      * Fetch the security matrix for a specific model and role.
      */
-    public MatrixResponse getMatrix(String modelClass, int roleId) {
-        String url = String.format("%s/matrix?model_class=%s&subject_id=%d", baseUrl, modelClass, roleId);
+    public MatrixResponse getMatrix(String model, int roleId) {
+        String url = String.format("%s/matrix?model_class=%s&subject_id=%d", baseUrl, model, roleId);
         
         ResponseEntity<MatrixResponse> response = restTemplate.getForEntity(url, MatrixResponse.class);
         return response.getBody();
@@ -50,11 +50,11 @@ public class GovernanceClient {
     /**
      * Save updated security rules for a role.
      */
-    public void saveMatrix(String modelClass, int roleId, boolean isReportable, Map<String, String> attributeRules) {
+    public void saveMatrix(String model, int roleId, boolean isReportable, Map<String, String> attributeRules) {
         String url = baseUrl + "/save";
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("model_class", modelClass);
+        payload.put("model_class", model);
         payload.put("subject_id", roleId);
         payload.put("is_reportable", isReportable);
         payload.put("attributes", attributeRules);

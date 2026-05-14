@@ -8,21 +8,23 @@ However, executing that query securely and efficiently against a production data
 
 ## 1. Standard Generation (Development / Small Data)
 
-The `generate()` method compiles the AST and returns a standard Laravel `Illuminate\Database\Query\Builder` instance. Before you execute the query, you should always enforce Attribute Level Security (ALS) using the `GovernanceManager` to ensure the currently authenticated user is authorized to see the requested fields.
+The `generate()` method compiles the AST and returns a standard Laravel `Illuminate\Database\Query\Builder` instance. The engine automatically resolves Attribute Level Security (ALS) when you pass `$subjects` — an array of entities whose restriction rules should apply (e.g., the authenticated user and their roles).
 
 **Code Example:**
 ```php
-// Retrieve ALS rules for the current user's role
-$matrix = GovernanceManager::getMatrix($reportRequest->baseModel, Role::class, $user->role_id);
+// Option A: Pass subjects for ALS enforcement
+$subjects = auth()->user()->getDynamicReportSubjects();
+$query = DynamicReport::generate($reportRequest, $subjects);
 
-// Generate the Query Builder and automatically inject masking logic based on the matrix
-$query = DynamicReport::generate($reportRequest, $matrix['attributes']);
+// Option B: Without subjects (no ALS filtering)
+$query = DynamicReport::generate($reportRequest);
+
 $results = $query->get();
 ```
 
 > [!WARNING]
 > **RAM Crash Risk**
-> You should **never** call `->get()` without limits in a production environment if there is a chance the report will return millions of rows. Fetching millions of rows simultaneously will exceed PHP's memory limit (Out-Of-Memory error) and crash the backend server.
+> You should **never** call `->get()` without limits in a production environment if there is a chance the report will return millions of rows. Fetching millions of rows simultaneously will exceed PHP's memory limit (Out-Of-Memory error) and crash the backend server. The engine enforces a configurable `max_rows` safety limit (default: 5000) as a backstop, but explicit pagination is still recommended.
 
 ---
 
@@ -33,7 +35,8 @@ For presenting data back to a User Interface (like Vue, React, or Blade), you sh
 **Code Example:**
 ```php
 // Compiles the AST and automatically paginates at 50 rows per page
-$paginator = DynamicReport::generatePaginated($reportRequest, 50);
+$subjects = auth()->user()->getDynamicReportSubjects();
+$paginator = DynamicReport::generatePaginated($reportRequest, 50, $subjects);
 
 return response()->json([
     'data' => $paginator->items(),
@@ -53,21 +56,22 @@ return response()->json([
 
 The most requested feature for any reporting engine is the ability to export the data to Excel or CSV. Exporting millions of rows is inherently dangerous.
 
-To solve this, the engine natively provides an `exportToCsv()` method. It bypasses memory loading entirely by utilizing database `chunk()` iteration and injecting the rows directly into a `StreamedResponse`.
+To solve this, the engine natively provides an `exportToCsv()` method. It bypasses memory loading entirely by utilizing a database `cursor()` and injecting the rows directly into a Symfony `StreamedResponse`.
 
 **Code Example:**
 ```php
 public function downloadReport(Request $request) {
     $reportRequest = ReportRequest::fromJson($request->input('payload'));
+    $subjects = auth()->user()->getDynamicReportSubjects();
     
-    // Streams the CSV directly to the user's browser, pulling 1000 rows at a time
-    return DynamicReport::exportToCsv($reportRequest, 'sales_report_2026.csv');
+    // Streams the CSV directly to the user's browser, one row at a time via cursor
+    return DynamicReport::exportToCsv($reportRequest, 'sales_report_2026.csv', $subjects);
 }
 ```
 
 > [!IMPORTANT]
 > **Zero-Memory Buffering**
-> Because it uses a `StreamedResponse`, the CSV file is never constructed in PHP memory. It streams bytes directly over the HTTP connection to the user's browser as the database chunking runs. This means you can safely export a 10GB CSV file from a 512MB RAM server.
+> Because it uses a `StreamedResponse` backed by a database `cursor()`, the CSV file is never constructed in PHP memory. Each row is fetched one at a time via a server-side cursor and piped directly over the HTTP connection to the user's browser. This means you can safely export a 10GB CSV file from a 512MB RAM server.
 
 ---
 
@@ -85,3 +89,20 @@ $rawSqlString = DynamicReport::toRawSql($query);
 // Returns: "SELECT t0.*, SUM(t1.amount) as total_revenue FROM users as t0 LEFT JOIN orders as t1..."
 return response()->json(['sql' => $rawSqlString]);
 ```
+
+---
+
+## 5. Headless Execution (Saved Reports)
+
+For executing a previously saved report without any UI involvement — such as in scheduled jobs or API integrations — the engine provides `loadAndGenerate()`. This fetches the saved AST from the database, deserializes it, executes it, and logs the action.
+
+**Code Example:**
+```php
+// Execute saved report #42 and log it as run by user #1
+$query = DynamicReport::loadAndGenerate(42, auth()->id());
+$results = $query->get();
+```
+
+> [!TIP]
+> **Alias Preservation**
+> Column aliases defined when the report was originally saved are correctly preserved during deserialization via the `ReportSerializer`, ensuring that exported column headers match the original report design.

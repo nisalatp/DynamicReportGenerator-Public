@@ -11,6 +11,7 @@ class VirtualAttribute extends Model
     protected $fillable = [
         'name',
         'base_model',
+        'return_type',
         'sql_fragment',
         'dependencies',
     ];

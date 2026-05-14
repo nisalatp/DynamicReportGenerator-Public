@@ -27,8 +27,8 @@ public function register()
 ```
 
 ### `3_class_diagram.puml` (OOP Class Structure)
-**Implementation Files**: `src/Types/ReportRequest.php`, `src/Types/FilterNode.php`
-**Explanation**: Maps the strict Object-Oriented design of the Abstract Syntax Tree (AST). Instead of passing loose arrays, the engine forces the UI to map to strict DTOs.
+**Implementation Files**: `src/Types/ReportRequest.php`, `src/Types/FilterNode.php`, `src/Types/Attribute.php`
+**Explanation**: Maps the strict Object-Oriented design of the Abstract Syntax Tree (AST). Instead of passing loose arrays, the engine forces the UI to map to strict DTOs. The `Attribute` DTO now includes an optional `alias` field for column renaming.
 
 **Code Evidence**:
 ```php
@@ -41,41 +41,56 @@ class ReportRequest {
         public readonly ?FilterNode $innerFilters = null,
         public readonly array $groupBys = [],
         public readonly array $aggregates = [],
-        public readonly ?FilterNode $outerFilters = null
+        public readonly ?FilterNode $outerFilters = null,
+        public readonly array $sorts = []
     ) {}
 }
 ```
 
 ### `4.1_sequence_execution.puml` & `6_activity_diagram.puml` (Query Generation Flow)
 **Implementation Files**: `src/ReportMaker.php` (`generate()` method)
-**Explanation**: The activity diagram dictates the exact algorithm executed by the `generate()` function. It resolves Virtual Attribute dependencies first, maps Eloquent joins via BFS (Breadth-First Search), and then applies the AST to the Laravel Query Builder.
+**Explanation**: The activity diagram dictates the exact algorithm executed by the `generate()` function. It validates security constraints first (model access, ALS, filter depth), resolves Virtual Attribute dependencies, maps Eloquent joins via BFS (Breadth-First Search), and then applies the AST to the Laravel Query Builder. A configurable `max_rows` limit is enforced as a final safety boundary.
 
 **Code Evidence**:
 ```php
 // ReportMaker.php
-public function generate(ReportRequest $whatUserWants): Builder
+public function generate(ReportRequest $whatUserWants, ?array $subjects = null): Builder
 {
+    $this->ensureModelsLoaded();
+    $this->ensureModelAllowed($whatUserWants->baseModel);
+    $this->resolveAttributeRestrictions($subjects);
+    $this->validateSecurity($whatUserWants);
+    $this->validateFilterDepth($whatUserWants->innerFilters, 'WHERE');
+    $this->validateFilterDepth($whatUserWants->outerFilters, 'HAVING');
+
     $targetModels = $whatUserWants->targetModels;
     // Step 1: Extract VA dependencies
     $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
     
     // Step 2: Bidirectional Link Discovery + BFS Join Planning
-    // discoverLinks() returns a cached bidirectional graph:
-    //   Phase 1: getForwardRelations() — reflection-based forward edges
-    //   Phase 2: getReverseRelations() — synthesized inverse edges
     $links = $this->discoverLinks();
     $joinPlan = $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
 
-    // Step 3: Build Base Query
+    // Step 3: Build Base Query (applies ALS masking/blocking in SELECT)
     $innerQuery = $this->buildInnerQuery(
-        $whatUserWants->baseModel, $joinPlan, $whatUserWants->selectedAttributes, $whatUserWants->innerFilters
+        $whatUserWants->baseModel, $joinPlan,
+        $whatUserWants->selectedAttributes, $whatUserWants->innerFilters
     );
 
     // Step 4: Wrap Subquery (If Aggregates Exist)
     if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates)) {
-        return $this->buildOuterQuery(..., $innerQuery, ...);
+        $query = $this->buildOuterQuery(..., $innerQuery, ...);
+    } else {
+        $query = $innerQuery;
     }
-    return $innerQuery;
+
+    // Step 5: Enforce max_rows safety limit
+    $maxRows = config('dynamicreportgenerator.limits.max_rows');
+    if ($maxRows) {
+        $query->limit($maxRows);
+    }
+
+    return $query;
 }
 ```
 
@@ -97,8 +112,8 @@ if ($isVirtual && $this->vaRegistry && $base) {
 ```
 
 ### `05_schema_discovery_flow.puml` (Schema Discovery Broker)
-**Implementation Files**: `src/ReportMaker.php` (`getModelAttributes()`)
-**Explanation**: Maps how the engine acts as an intermediary broker to shield external frontends from Laravel's internal reflection API, merging physical schema columns with Virtual Attributes dynamically.
+**Implementation Files**: `src/ReportMaker.php` (`getModelAttributes()`, `getConnectedModels()`, `getMaxFilterDepth()`)
+**Explanation**: Maps how the engine acts as an intermediary broker to shield external frontends from Laravel's internal reflection API, merging physical schema columns with Virtual Attributes dynamically. The broker now also exposes `getMaxFilterDepth()` so frontends can enforce the same nesting limit.
 
 **Code Evidence**:
 ```php
@@ -111,12 +126,18 @@ public function getModelAttributes(string $modelClass): array
     return array_merge($physicalCols, $virtualAttrs);
 }
 
-// NEW: Get all connected models (both forward-declared and reverse-synthesized)
+// Get all connected models (both forward-declared and reverse-synthesized)
 public function getConnectedModels(string $modelClass): array
 {
     $this->ensureModelAllowed($modelClass);
     $links = $this->discoverLinks(); // Uses cached bidirectional graph
     return $links[$modelClass] ?? [];
+}
+
+// Expose configured filter nesting depth to frontends
+public function getMaxFilterDepth(): int
+{
+    return (int) config('dynamicreportgenerator.ui.max_filter_depth', 3);
 }
 ```
 
@@ -125,22 +146,27 @@ public function getConnectedModels(string $modelClass): array
 ## Part 2: Demo Environment Integration & UI-Agnostic Services
 
 ### `01_report_generation_flow.puml`
-**Implementation Files**: `src/Types/ReportBuilderRequest.php`, `src/Services/GovernanceManager.php`
+**Implementation Files**: `src/Http/Requests/ReportBuilderRequest.php`, `src/Services/GovernanceManager.php`
 **Explanation**: Shows how the host application controller uses the `ReportBuilderRequest` factory to transform the flat JSON sent by the frontend into the strict AST. It also explicitly shows the `GovernanceManager` intercepting the request to apply Attribute Level Security (ALS) rules before execution.
 
 **Code Evidence**:
 ```php
 // ReportBuilderRequest.php
-public static function createFromPayload(array $payload): self
+public static function fromPayload(array $payload): ReportRequest
 {
     $selectedAttributes = collect($payload['selectedAttributes'] ?? [])->map(function ($attr) {
-        return new Attribute($attr['model'], $attr['column'], $attr['type']);
+        return new Attribute(
+            $attr['model'], $attr['column'], $attr['type'] ?? 'string',
+            isVirtual: $attr['isVirtual'] ?? false,
+            alias: $attr['alias'] ?? null
+        );
     })->toArray();
 
-    return new self(
+    return new ReportRequest(
         baseModel: $payload['baseModel'],
         targetModels: $payload['targetModels'] ?? [],
         selectedAttributes: $selectedAttributes,
+        innerFilters: self::parseFilterNode($payload['innerFilters'] ?? null, false),
         // ...
     );
 }
@@ -148,27 +174,33 @@ public static function createFromPayload(array $payload): self
 
 ### `02_virtual_attribute_builder_flow.puml`
 **Implementation Files**: `src/Services/VirtualAttributeCompiler.php`, `src/Builders/VirtualAttributeBuilder.php`
-**Explanation**: Details how the frontend visual "No-Code" dropdowns are sent to the `/va-builder/compile` endpoint, where the `VirtualAttributeCompiler` securely generates the SQL fragment using Laravel's Reflection API, before passing it to the Fluent Builder pattern for registration.
+**Explanation**: Details how the frontend visual "No-Code" dropdowns are sent to the `/va-builder/compile` endpoint, where the `VirtualAttributeCompiler` securely generates the SQL fragment using the engine's `buildScalarSubquery()` method, before passing it to the Fluent Builder pattern for registration.
 
 **Code Evidence**:
 ```php
 // VirtualAttributeCompiler.php
 public static function compileVisualPayload(array $payload): string
 {
-    $baseModel = $payload['baseModel'];
-    $targetModel = $payload['ast'][0]['model'];
-    // Reflection logic safely maps table names and relationships...
-    return "(SELECT {$agg}({$col}) FROM {$targetTable} WHERE ...)";
+    $request = VirtualAttributeRequest::fromArray($payload);
+    $reportMaker = app(ReportMaker::class);
+    return $reportMaker->buildScalarSubquery($request);
 }
+
+// VirtualAttributeBuilder.php (Fluent Builder Pattern)
+VirtualAttributeBuilder::create('total_order_value')
+    ->forBaseModel(User::class)
+    ->withSqlFragment($compiledSql)
+    ->dependsOn([Order::class])
+    ->register();
 ```
 
 ### `03_save_and_load_report_flow.puml`
-**Implementation Files**: `src/ReportMaker.php` (`saveReport()`)
-**Explanation**: Demonstrates how the backend strictly validates the AST using the Factory before serializing it into a JSON payload and saving it into the `dynamic_saved_reports` table via Eloquent.
+**Implementation Files**: `src/ReportMaker.php` (`saveReport()`, `loadToEditor()`)
+**Explanation**: Demonstrates how the backend strictly validates the AST using the Factory before serializing it into a JSON payload and saving it into the `dynamic_saved_reports` table via Eloquent. When loading, `loadToEditor()` uses `ReportSerializer::fromJson()` to reconstruct the full AST — including preserved column aliases — for frontend rehydration.
 
 ### `04_execute_saved_report_flow.puml`
-**Implementation Files**: `src/Types/ReportBuilderRequest.php` (`createFromSavedReport()`)
-**Explanation**: Maps how a previously saved report bypasses UI serialization completely. The database state is hydrated directly into the AST DTO for completely secure, server-side execution.
+**Implementation Files**: `src/ReportMaker.php` (`loadAndGenerate()`)
+**Explanation**: Maps how a previously saved report bypasses UI serialization completely. The database state is hydrated directly into the AST DTO via `ReportSerializer::fromJson()` for completely secure, server-side execution. The execution is automatically logged in `dynamic_report_logs`.
 
 ### `05_attribute_level_security_setup_flow.puml`
 **Implementation Files**: `src/Services/GovernanceManager.php`
@@ -176,7 +208,7 @@ public static function compileVisualPayload(array $payload): string
 
 ### `06_report_assignment_flow.puml`
 **Implementation Files**: `src/Models/SavedReport.php`
-**Explanation**: Demonstrates the use of the `dynamic_report_user` pivot table and Eloquent's `sync()` method to achieve stateless, array-based access control to Saved Reports.
+**Explanation**: Demonstrates the use of the `dynamic_report_user` pivot table and Eloquent's `attach()`/`detach()` methods to achieve stateless, array-based access control to Saved Reports. Both assign and unassign operations are logged in `dynamic_report_logs`.
 
 ---
 
@@ -187,7 +219,7 @@ For an academic capstone defense, evaluators look for the application of Compute
 ### 1. Applied Design Patterns (Gang of Four & Enterprise)
 The architecture rigorously employs several proven software design patterns, which are clearly visible in the `3_class_diagram.puml` and `7_package_diagram.puml`:
 - **Composite Pattern**: The Abstract Syntax Tree (AST) for filters (`FilterNode` interface) utilizes the Composite pattern. A `FilterGroup` contains an array of `FilterNode` children (which can be either `FilterLeaf` or another `FilterGroup`), allowing the engine to traverse infinitely nested `AND/OR` SQL conditions recursively.
-- **Builder / Fluent Interface Pattern**: Implemented in the `VirtualAttributeBuilder` to allow step-by-step chaining (e.g., `create()->forBaseModel()->withSqlFragment()->register()`), isolating the complexity of model creation from the controller.
+- **Builder / Fluent Interface Pattern**: Implemented in the `ReportBuilder` and `FilterBuilder` for programmatic report construction (e.g., `ReportBuilder::forModel(User::class)->select(...)->filter(...)->build()`), and in `VirtualAttributeBuilder` for step-by-step VA registration (e.g., `create()->forBaseModel()->withSqlFragment()->register()`). This isolates the complexity of DTO construction from the host controller.
 - **Singleton Pattern**: The `VirtualAttributeRegistry` is instantiated as a Singleton via the Laravel Service Provider. This ensures that the registry loads the raw SQL strings from the database only **once** per request lifecycle, eliminating N+1 query problems during report generation.
 - **Facade Pattern**: The `DynamicReport` Facade abstracts the complex instantiation of the `ReportMaker` engine, providing a clean, static interface for the host application to use (e.g., `DynamicReport::generate()`).
 - **Broker Pattern**: The `ReportMaker` engine acts as a Schema Discovery Broker. It intercepts frontend requests for models/attributes and handles the complex PHP Reflection and database schema lookups internally, returning a clean array. This isolates the frontend from backend structural complexities.
@@ -202,3 +234,12 @@ When presenting `6_activity_diagram.puml`, highlight the **BFS Algorithm** used 
 When presenting `2_erd.puml`, mention how the design optimizes for large datasets:
 - **Subquery Pushdown**: The Virtual Attribute system avoids processing data in PHP RAM. Instead of hydrating Eloquent models and running `->count()`, the system transpiles the logic into raw SQL Subqueries and pushes them down to the Database Engine, allowing MySQL/SQLite to execute aggregations at hardware speed.
 - **JSON Payload Storage**: The `dynamic_saved_reports` table leverages modern RDBMS JSON column capabilities to store the serialized AST, allowing the configuration to be completely schema-less while remaining robust.
+- **Cursor-Based CSV Streaming**: Data exports use Laravel's `cursor()` with a Symfony `StreamedResponse`, maintaining O(1) PHP memory by piping rows directly to the HTTP connection without buffering.
+
+### 4. Security & Safety Boundaries
+When presenting the architecture, highlight the defense-in-depth approach:
+- **DTO Whitelist Validation**: `Aggregate`, `FilterLeaf`, and `Sort` constructors all validate against immutable whitelists, preventing SQL injection at the DTO boundary.
+- **Parameterized Bindings**: All dynamic values — including `HAVING ... IN (...)` — use PDO `?` placeholders instead of string interpolation.
+- **Filter Depth Limits**: `validateFilterDepth()` recursively measures nesting depth and rejects requests exceeding the configured `max_filter_depth` (default: 3). The same limit is exposed to frontends via `getMaxFilterDepth()`.
+- **Execution Row Limits**: A configurable `max_rows` (default: 5000) is applied via `->limit()` to all generated queries as a safety net.
+- **Internal Model Auto-Exclusion**: Package infrastructure tables are automatically hidden from the reportable model list via the `INTERNAL_MODELS` constant, configurable via `include_package_models`.

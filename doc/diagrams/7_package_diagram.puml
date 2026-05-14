@@ -17,23 +17,52 @@ package "Nisalatp\\DynamicReportGenerator" {
 
     package "Types (AST & DTOs)" {
         [ReportRequest]
-        [FilterNode]
+        [VirtualAttributeRequest]
+        [FilterNode / FilterGroup / FilterLeaf]
         [Attribute]
         [Aggregate]
         [GroupBy]
+        [Sort]
         [ReportSerializer]
-        [JoinPlan]
-        [JoinStep]
-        [ModelLink]
+        [JoinPlan / JoinStep]
+        [ModelLink / ModelInfo]
+    }
+
+    package "Builders" {
+        [ReportBuilder]
+        [FilterBuilder]
+        [VirtualAttributeBuilder]
+    }
+
+    package "Services" {
+        [GovernanceManager]
+        [VirtualAttributeManager]
+        [VirtualAttributeCompiler]
+    }
+
+    package "Registry" {
+        [VirtualAttributeRegistry]
     }
 
     package "Models" {
         [SavedReport]
         [ReportLog]
+        [VirtualAttribute]
+        [RestrictedModel]
+        [AttributeRestriction]
+    }
+
+    package "Contracts" {
+        [DynamicReportSubject]
     }
 
     package "Exceptions" {
         [ReportMakerException]
+        [ReportMakerSecurityException]
+    }
+
+    package "Http\\Requests" {
+        [ReportBuilderRequest]
     }
 }
 
@@ -41,15 +70,24 @@ package "Illuminate (Laravel Framework)" {
     [Database\\Eloquent\\Model]
     [Database\\Query\\Builder]
     [Support\\ServiceProvider]
+    [Support\\Facades\\DB]
 }
 
-Providers --> Engine : "Instantiates"
-Facades --> Engine : "Proxies"
+' === Dependency Arrows ===
+Providers --> Engine : "Registers as Singleton"
+Facades --> Engine : "Proxies static calls"
 Engine --> Types : "Consumes / Generates"
 Engine --> Models : "CRUD Operations"
 Engine --> Exceptions : "Throws"
-Types --> Exceptions : "Throws"
-Models --> Illuminate : "Extends Eloquent"
-Engine --> Illuminate : "Uses Query Builder"
+Engine --> Registry : "Resolves Virtual Attributes"
+Engine --> Contracts : "Polls for subjects"
+Services --> Engine : "Delegates to"
+Services --> Models : "Queries / Mutates"
+Services --> Registry : "Reads from"
+Builders --> Types : "Constructs DTOs"
+Types --> Exceptions : "Throws on validation"
+Models --> Illuminate : "Extends Eloquent Model"
+Engine --> Illuminate : "Uses Query Builder & DB"
+"Http\\Requests" --> Types : "Parses JSON into DTOs"
 
 @enduml

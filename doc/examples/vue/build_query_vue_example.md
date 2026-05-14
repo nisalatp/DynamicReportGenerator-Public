@@ -54,20 +54,20 @@ const payload = reactive({
 
 const addMultipleGroupBys = () => {
     payload.groupBys.push(
-        { attribute: { modelClass: 'User', column: 'country', type: 'string' } },
-        { attribute: { modelClass: 'Product', column: 'category', type: 'string' } }
+        { attribute: { model: 'User', column: 'country', type: 'string' } },
+        { attribute: { model: 'Product', column: 'category', type: 'string' } }
     );
 };
 
 const addMultipleAggregates = () => {
     payload.aggregates.push(
         {
-            attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
+            attribute: { model: 'Order', column: 'amount', type: 'integer' },
             function: 'SUM',
             alias: 'total_revenue'
         },
         {
-            attribute: { modelClass: 'Order', column: 'id', type: 'integer' },
+            attribute: { model: 'Order', column: 'id', type: 'integer' },
             function: 'COUNT',
             alias: 'total_orders'
         }
@@ -81,7 +81,7 @@ const addComplexFilterGroup = () => {
         children: [
             {
                 type: 'leaf',
-                attribute: { modelClass: 'User', column: 'status', type: 'string' },
+                attribute: { model: 'User', column: 'status', type: 'string' },
                 operator: '=',
                 value: 'active'
             },
@@ -91,13 +91,13 @@ const addComplexFilterGroup = () => {
                 children: [
                     {
                         type: 'leaf',
-                        attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                        attribute: { model: 'Product', column: 'category', type: 'string' },
                         operator: '=',
                         value: 'Electronics'
                     },
                     {
                         type: 'leaf',
-                        attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                        attribute: { model: 'Product', column: 'category', type: 'string' },
                         operator: '=',
                         value: 'Software'
                     }
@@ -114,13 +114,13 @@ const addComplexHavingFilter = () => {
          children: [
              {
                  type: 'leaf',
-                 attribute: { modelClass: 'Order', column: 'amount', type: 'integer', isVirtual: true },
+                 attribute: { model: 'Order', column: 'amount', type: 'integer', isVirtual: true },
                  operator: '>',
                  value: 10000
              },
              {
                  type: 'leaf',
-                 attribute: { modelClass: 'Order', column: 'id', type: 'integer', isVirtual: true },
+                 attribute: { model: 'Order', column: 'id', type: 'integer', isVirtual: true },
                  operator: '>',
                  value: 5
              }
@@ -158,17 +158,17 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -179,7 +179,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -189,13 +189,13 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -209,13 +209,13 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }
@@ -223,7 +223,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "attribute": { "model": "Order", "column": "total_revenue", "isVirtual": true },
         "direction": "DESC"
     }
   ]

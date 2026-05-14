@@ -41,6 +41,9 @@ This example demonstrates how to build a dynamic schema explorer in Vue 3. It qu
           <li v-for="(rel, targetModel) in relationships" :key="targetModel">
             <strong>{{ targetModel }}</strong> 
             ({{ rel.type }} via <code>{{ rel.methodName }}()</code>)
+            <span :class="['badge', rel.direction === 'reverse' ? 'badge-reverse' : 'badge-forward']">
+              {{ rel.direction }}
+            </span>
           </li>
         </ul>
       </div>
@@ -120,5 +123,6 @@ When the user selects `Order` from the dropdown, the frontend might render the f
 - `va:total_revenue` <span style="color: blue;">(Virtual)</span>
 
 **Discoverable Relationships**
-- `User` (BelongsTo via `user()`)
-- `Product` (BelongsToMany via `products()`)
+- `User` (BelongsTo via `user()`) — direction: `forward`
+- `Product` (BelongsToMany via `products()`) — direction: `forward`
+- `OrderItem` (HasMany via `orderItems()`) — direction: `reverse` *(synthesized)*

@@ -50,20 +50,20 @@ document.addEventListener('alpine:init', () => {
 
         addMultipleGroupBys() {
             this.payload.groupBys.push(
-                { attribute: { modelClass: 'User', column: 'country', type: 'string' } },
-                { attribute: { modelClass: 'Product', column: 'category', type: 'string' } }
+                { attribute: { model: 'User', column: 'country', type: 'string' } },
+                { attribute: { model: 'Product', column: 'category', type: 'string' } }
             );
         },
 
         addMultipleAggregates() {
             this.payload.aggregates.push(
                 {
-                    attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
+                    attribute: { model: 'Order', column: 'amount', type: 'integer' },
                     function: 'SUM',
                     alias: 'total_revenue'
                 },
                 {
-                    attribute: { modelClass: 'Order', column: 'id', type: 'integer' },
+                    attribute: { model: 'Order', column: 'id', type: 'integer' },
                     function: 'COUNT',
                     alias: 'total_orders'
                 }
@@ -77,7 +77,7 @@ document.addEventListener('alpine:init', () => {
                 children: [
                     {
                         type: 'leaf',
-                        attribute: { modelClass: 'User', column: 'status', type: 'string' },
+                        attribute: { model: 'User', column: 'status', type: 'string' },
                         operator: '=',
                         value: 'active'
                     },
@@ -87,13 +87,13 @@ document.addEventListener('alpine:init', () => {
                         children: [
                             {
                                 type: 'leaf',
-                                attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                                attribute: { model: 'Product', column: 'category', type: 'string' },
                                 operator: '=',
                                 value: 'Electronics'
                             },
                             {
                                 type: 'leaf',
-                                attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                                attribute: { model: 'Product', column: 'category', type: 'string' },
                                 operator: '=',
                                 value: 'Software'
                             }
@@ -110,13 +110,13 @@ document.addEventListener('alpine:init', () => {
                  children: [
                      {
                          type: 'leaf',
-                         attribute: { modelClass: 'Order', column: 'amount', type: 'integer', isVirtual: true },
+                         attribute: { model: 'Order', column: 'amount', type: 'integer', isVirtual: true },
                          operator: '>',
                          value: 10000
                      },
                      {
                          type: 'leaf',
-                         attribute: { modelClass: 'Order', column: 'id', type: 'integer', isVirtual: true },
+                         attribute: { model: 'Order', column: 'id', type: 'integer', isVirtual: true },
                          operator: '>',
                          value: 5
                      }
@@ -162,17 +162,17 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -183,7 +183,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -193,13 +193,13 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -213,13 +213,13 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }
@@ -227,7 +227,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "attribute": { "model": "Order", "column": "total_revenue", "isVirtual": true },
         "direction": "DESC"
     }
   ]

@@ -107,9 +107,10 @@ Initially, host applications were required to manually instantiate Eloquent mode
 
 ### 6.2 The Engine as a Broker
 To solve this, the `ReportMaker` engine acts as a **Schema Discovery Broker**. 
-- It exposes four critical methods via the `DynamicReport` Facade: `getAvailableModels()`, `getModelAttributes()`, `getModelRelationships()`, and the new `getConnectedModels()`.
+- It exposes six critical methods via the `DynamicReport` Facade: `getAvailableModels()`, `getAllApplicationModels()`, `getModelAttributes()`, `getModelRelationships()`, `getConnectedModels()`, and `getMaxFilterDepth()`.
 - **Bidirectional Relationship Discovery**: The `getConnectedModels()` method returns both forward-declared Eloquent relationships and reverse-synthesized edges. Each relationship includes a `direction` field (`'forward'` or `'reverse'`), enabling the frontend to distinguish between explicitly declared relationships and engine-inferred reverse edges.
 - **Intelligent Merging**: When an external application requests the attributes for the `Order` model, the engine queries the physical database schema *and* the `VirtualAttributeRegistry`. It merges these together, prefixing Virtual Attributes with `va:`, and returns a unified list.
+- **Configuration Exposure**: The `getMaxFilterDepth()` method returns the configured maximum AND/OR nesting depth, allowing frontends to proactively limit the nesting depth in the visual filter builder before submission.
 - **Why?**: This completely encapsulates the reflection logic. Any frontend application, regardless of language or framework, can simply query the engine to receive a perfect, 1D abstraction of the physical schema and the 3D relational graph. The bidirectional discovery ensures that the frontend always sees complete connectivity information, even when models only declare one side of a relationship.
 
 ## 7. Data Governance & Attribute Level Security (ALS)
@@ -129,15 +130,31 @@ Host applications can implement the `Nisalatp\DynamicReportGenerator\Contracts\D
 
 To ensure the engine is fully enterprise-ready, it implements strict boundaries to prevent SQL injection and Out-Of-Memory (OOM) fatal errors.
 
-### 8.1 Strict Aggregate Validation (SQL Injection Prevention)
+### 8.1 Strict DTO Validation (SQL Injection Prevention)
 When processing aggregated calculations (e.g., `SUM`, `COUNT`), the `Aggregate` DTO acts as a rigid security perimeter.
 - **The Threat**: If the `function` string was passed directly to `DB::raw()`, a malicious user could intercept the frontend JSON payload and inject a subquery like `SUM); DROP TABLE users; --`.
-- **The Solution**: The `Aggregate` DTO contains an immutable `ALLOWED_FUNCTIONS` whitelist (`['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']`). The DTO's constructor strictly validates the incoming string against this whitelist, completely neutralizing SQL injection vectors before the compilation phase even begins.
+- **The Solution**: The `Aggregate` DTO contains an immutable `ALLOWED_FUNCTIONS` whitelist (`['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']`). The DTO's constructor strictly validates the incoming string against this whitelist, completely neutralizing SQL injection vectors before the compilation phase even begins. The same pattern is applied to `FilterLeaf` (operator whitelist) and `Sort` (direction whitelist).
+- **Parameterized Bindings**: All dynamic filter values — including complex `HAVING ... IN (...)` clauses — use PDO parameterized `?` placeholders instead of string interpolation, ensuring comprehensive SQL injection prevention across all filter paths.
 
-### 8.2 RAM Crash Prevention via Pagination and Streaming
+### 8.2 Filter Nesting Depth Validation
+Deeply nested AND/OR filter groups can produce complex SQL and represent a potential abuse vector.
+- **The Solution**: The `validateFilterDepth()` method recursively measures the nesting depth of `FilterGroup` nodes in both `WHERE` (innerFilters) and `HAVING` (outerFilters) trees. If the depth exceeds the configured `max_filter_depth` limit (default: 3), a `ReportMakerException` is thrown with a descriptive error indicating the clause type and the configured limit.
+- **Frontend Alignment**: The same limit is exposed to frontends via `getMaxFilterDepth()`, enabling a consistent enforcement boundary across the full stack.
+
+### 8.3 Execution Row Limit
+The engine enforces a configurable `max_rows` safety limit (default: 5000) on every generated query via `->limit()`. This prevents runaway queries from overwhelming the host application's memory and database connection pool, even when the host omits its own pagination.
+
+### 8.4 RAM Crash Prevention via Pagination and Streaming
 Host applications inherently lack the context to know if a dynamically generated report will evaluate to 50 rows or 5,000,000 rows. If an application blindly calls `->get()` on a massive dataset, the PHP process will crash due to memory exhaustion.
 - **Paginated Generation**: The engine abstracts execution via `DynamicReport::generatePaginated($request, 50)`. This forces the host application into an O(1) memory complexity boundary, ensuring only exactly 50 rows are ever loaded into RAM simultaneously.
-- **Database Chunking & CSV Streaming**: To facilitate massive data exports, the engine leverages Laravel's `chunk()` method combined with a `StreamedResponse`. This iterates through the database connection in small blocks and pipes the bytes directly over the HTTP connection to the user's browser, enabling the secure export of gigabyte-scale CSV files without impacting backend server stability.
+- **Cursor-Based CSV Streaming**: To facilitate massive data exports, the engine leverages Laravel's `cursor()` method combined with a Symfony `StreamedResponse`. The database cursor iterates results one row at a time via a server-side cursor, piping each row as CSV bytes directly over the HTTP connection. This maintains O(1) PHP memory complexity regardless of export size, enabling the secure export of gigabyte-scale CSV files without impacting backend server stability.
+
+### 8.5 Model Visibility Control
+The engine implements a multi-layered model visibility system to control which Eloquent models are available for reporting:
+1. **Auto-Discovery (Default)**: When `reportable_models` config is empty, the engine scans `app_path()` via Symfony Finder to discover all Eloquent models automatically.
+2. **Explicit Whitelist**: When `reportable_models` is populated, only listed models are available — auto-discovery is bypassed entirely.
+3. **Model Restriction**: Models can be dynamically restricted at runtime via `restrictModel()`, removing them from the available model graph.
+4. **Internal Model Exclusion**: The engine's own infrastructure models (`SavedReport`, `ReportLog`, `RestrictedModel`, `AttributeRestriction`, `VirtualAttribute`) are automatically excluded via the `INTERNAL_MODELS` constant, unless the `include_package_models` config is explicitly set to `true`.
 
 ---
 

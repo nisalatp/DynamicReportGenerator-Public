@@ -43,7 +43,7 @@ The `Attribute` object is heavily used across `selectedAttributes`, `groupBys`, 
 
 ```json
 {
-  "modelClass": "User",
+  "model": "User",
   "column": "email",
   "type": "string",
   "isVirtual": false,
@@ -55,12 +55,12 @@ The `Attribute` object is heavily used across `selectedAttributes`, `groupBys`, 
 ### Parameters
 | Field | Type | Description | Required? |
 |-------|------|-------------|-----------|
-| `modelClass` | `string` | The exact Model class name (e.g., `"User"`). | **Yes** |
+| `model` | `string` | The exact Model class name (e.g., `"User"`). | **Yes** |
 | `column` | `string` | The exact database column name or Virtual Attribute name. | **Yes** |
 | `type` | `string` | The data type (e.g., `"string"`, `"integer"`, `"date"`). Used for validation. | **Yes** |
 | `isVirtual` | `boolean` | Set to `true` if this is a Virtual Attribute. | No (Default: `false`) |
 | `jsonPath` | `string` \| `null` | Used if extracting data from a JSON column. | No |
-| `alias` | `string` \| `null` | SQL `AS` alias. | No |
+| `alias` | `string` \| `null` | SQL `AS` alias. **CRITICAL:** Use this if you are joining multiple tables that have the same column name (e.g. `User.name` and `Product.name`) to prevent collisions in the final result set. | No |
 
 ---
 
@@ -71,8 +71,8 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ### `GroupBy` Example (Multiple Groupings)
 ```json
 "groupBys": [
-  { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-  { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+  { "model": "User", "column": "country", "type": "string" },
+  { "model": "Product", "column": "category", "type": "string", "alias": "product_category" }
 ]
 ```
 
@@ -80,12 +80,12 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ```json
 "aggregates": [
   {
-    "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+    "model": "Order", "column": "amount", "type": "integer",
     "function": "SUM",
     "alias": "total_revenue"
   },
   {
-    "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+    "model": "Order", "column": "id", "type": "integer",
     "function": "COUNT",
     "alias": "total_orders"
   }
@@ -102,7 +102,7 @@ When ordering data, you specify an array of `Sort` objects. You can sort by phys
 ```json
 "sorts": [
   {
-    "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+    "model": "Order", "column": "total_revenue", "isVirtual": true,
     "direction": "DESC"
   }
 ]
@@ -127,7 +127,9 @@ A single condition. It **must** contain a `type: "leaf"` flag.
 ```json
 {
   "type": "leaf",
-  "attribute": { /* Attribute Object */ },
+  "model": "User",
+  "column": "status",
+  "type": "string",
   "operator": ">",
   "value": 1000
 }
@@ -157,6 +159,10 @@ Used for `(A AND B)` logic. It recursively contains other nodes in its `children
 #### `logic`
 Must be either `"and"` or `"or"`.
 
+> [!WARNING]
+> **Filter Depth Limit**
+> The engine enforces a configurable maximum nesting depth for filter groups (default: 3). If your `FilterGroup` tree exceeds this depth, the engine will throw a `ReportMakerException`. Query `getMaxFilterDepth()` via the Schema Discovery API to determine the current limit.
+
 ---
 
 ## 6. What You CANNOT Include 🚫
@@ -177,7 +183,7 @@ The Dynamic Report Generator is built with enterprise security in mind. It stric
 When the backend receives the AST:
 1. It queries the `GovernanceManager` for the active security matrix of the authenticated user's Role.
 2. It traverses the `selectedAttributes`, `filters`, `groupBys`, and `sorts` within the AST.
-3. **Blocking**: If the AST attempts to query a model or column that is flagged as `blocked` for the user, the execution will immediately throw an `UnauthorizedException`.
+3. **Blocking**: If the AST attempts to query a model or column that is flagged as `blocked` for the user, the execution will immediately throw a `ReportMakerSecurityException`.
 4. **Masking**: If the AST selects a column that is flagged as `masked` (e.g., `email`), the Engine dynamically intercepts the SQL generation and injects a database-level masking function (e.g., replacing `SELECT email` with `SELECT '***' AS email`).
 
 The frontend UI does not need to worry about writing secure queries or managing PII—the Engine guarantees data security at the compilation layer.
@@ -206,19 +212,19 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
   "baseModel": "User",
   "targetModels": ["Order"],
   "selectedAttributes": [
-    { "modelClass": "User", "column": "lifetime_spend", "type": "integer", "isVirtual": true }
+    { "model": "User", "column": "lifetime_spend", "type": "integer", "isVirtual": true }
   ],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } }
+    { "model": "User", "column": "country", "type": "string" }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "model": "Order", "column": "amount", "type": "integer",
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "model": "Order", "column": "id", "type": "integer",
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -229,7 +235,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "model": "User", "column": "status", "dataType": "string",
         "operator": "=",
         "value": "active"
       }
@@ -241,13 +247,13 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "model": "Order", "column": "amount", "dataType": "integer", "isVirtual": true,
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "model": "Order", "column": "id", "dataType": "integer", "isVirtual": true,
             "operator": ">",
             "value": 5
         }
@@ -255,7 +261,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "model": "Order", "column": "total_revenue", "isVirtual": true,
         "direction": "DESC"
     }
   ]

@@ -51,7 +51,8 @@ class ReportSerializer {
             column: $data['column'],
             type: $data['type'],
             isVirtual: $data['isVirtual'] ?? false,
-            jsonPath: $data['jsonPath'] ?? null
+            jsonPath: $data['jsonPath'] ?? null,
+            alias: $data['alias'] ?? null
         );
     }
 

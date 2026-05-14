@@ -18,6 +18,10 @@ return new class extends Migration
             $table->text('sql_fragment');
             $table->json('dependencies')->nullable();
             $table->timestamps();
+
+            // Ensure each VA name is unique per base model, preventing duplicates
+            // from race conditions since VirtualAttributeBuilder uses updateOrCreate.
+            $table->unique(['name', 'base_model'], 'dyn_va_name_model_unique');
         });
     }
 

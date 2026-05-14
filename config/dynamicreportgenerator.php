@@ -6,13 +6,28 @@ return [
     | Reportable Models
     |--------------------------------------------------------------------------
     |
-    | Only the Eloquent models listed here are permitted to be used within
-    | the dynamic reporting engine. Models must extend Illuminate\Database\Eloquent\Model.
+    | When populated, this acts as an explicit whitelist — only the models
+    | listed here will be available to the reporting engine. When left empty
+    | (the default), the engine auto-discovers all Eloquent models by
+    | scanning the application's model directories.
     |
     */
     'reportable_models' => [
         // App\Models\User::class,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Include Package Models
+    |--------------------------------------------------------------------------
+    |
+    | By default, the package's own infrastructure models (SavedReport,
+    | ReportLog, RestrictedModel, AttributeRestriction, VirtualAttribute)
+    | are automatically excluded from reportable tables. Set this to true
+    | if you need to expose them for reporting or auditing purposes.
+    |
+    */
+    'include_package_models' => false,
 
     /*
     |--------------------------------------------------------------------------

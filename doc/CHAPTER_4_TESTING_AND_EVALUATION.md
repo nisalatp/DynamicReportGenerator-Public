@@ -6,7 +6,7 @@ To ensure the robustness, security, and performance of the Dynamic Report Genera
 ## 4.2 Quality Assurance & Testing Strategy
 Due to the decoupled nature of the package, the engine was isolated and tested independently from the frontend UI.
 - **AST Integrity Validation**: The compiler explicitly rejects malformed arrays. By strictly enforcing the instantiation of `ReportRequest` DTOs, the system was tested to ensure that missing base models or invalid filter operators immediately throw a `ReportMakerException`, preventing malformed queries from reaching the database driver.
-- **SQL Injection Prevention**: All dynamic values parsed from the AST `FilterLeaf` nodes are strictly passed through Laravel's PDO parameter binding. Virtual Attributes, while raw SQL, are only writable by System Administrators, containing the potential blast radius of raw database execution to authorized personnel.
+- **SQL Injection Prevention**: All dynamic values parsed from the AST `FilterLeaf` nodes are strictly passed through Laravel's PDO parameter binding. This includes `HAVING ... IN (...)` clauses which use parameterized `?` placeholders instead of string interpolation. Virtual Attributes, while raw SQL, are only writable by System Administrators, containing the potential blast radius of raw database execution to authorized personnel.
 
 ## 4.3 Algorithmic Evaluation: Breadth-First Search (BFS) with Bidirectional Traversal
 The automated join resolution algorithm was mathematically evaluated for correctness. 
@@ -43,4 +43,17 @@ The core package API was successfully integrated, tested, and documented across 
 ### Model Context Protocol (MCP) Integration
 Beyond traditional web and mobile frontends, the strictly typed `AST_REFERENCE.md` schema was evaluated against the **Model Context Protocol (MCP)**. Because the AST format is entirely predictable and explicitly documented, it allows AI agents (like Claude or GPT-4) to natively read the schema and autonomously generate 100% accurate Report Requests directly from conversational prompts, completely bypassing traditional UI constraints.
 
+Crucially, the evaluation verified that **AI Agents seamlessly inherit all engine-level security constraints**:
+- **Attribute Level Security (ALS) Compliance**: When the MCP agent requests data containing masked fields, the engine successfully intercepts the fields and returns `***` arrays back to the LLM. The AI correctly identified the masked data and informed the user that their role lacked clearance to view the specific columns, proving that the API cannot be used as an exploit vector to bypass UI redaction.
+- **Autonomous Access Control**: The agent successfully utilized the `assign_report` and `unassign_report` MCP tools to securely manage the `dynamic_report_user` pivot table. This proved that AI agents can act as autonomous report administrators, restricting report visibility dynamically based on user prompts (e.g., "Restrict this report to the leadership team") while respecting the foundational access rules.
+
 By building this extensive documentation and multi-language support out-of-the-box, the project ensures a frictionless adoption curve for any enterprise engineering team looking to integrate self-service reporting.
+
+## 4.7 Configuration-Driven Safety Features
+A suite of configuration-driven safety mechanisms was evaluated to ensure the engine behaves defensively in production environments:
+
+- **Filter Nesting Depth Enforcement**: The `validateFilterDepth()` method was tested with filter trees of varying depth. Trees within the configured `max_filter_depth` limit (default: 3) executed successfully, while over-nested trees correctly threw a `ReportMakerException` with a descriptive error message indicating the clause type (`WHERE` or `HAVING`) and the configured limit. The same value is exposed to frontends via `getMaxFilterDepth()`, enabling proactive UI-level enforcement.
+- **Execution Row Limit**: The `max_rows` configuration (default: 5000) was verified to apply a `->limit()` clause to every generated query. This acts as a safety net preventing runaway queries from consuming excessive memory or database resources, even when the host application omits its own pagination.
+- **Reportable Models Whitelist**: When the `reportable_models` configuration array is populated, only the listed models are available to the engine. When empty, the engine falls back to auto-discovery via Symfony Finder. Both paths were validated to correctly filter models through `class_exists()` and `is_subclass_of(Model::class)` checks.
+- **Internal Model Auto-Exclusion**: The engine's own infrastructure models are automatically excluded from the reportable model list via the `INTERNAL_MODELS` constant. This was verified by confirming that `getAvailableModels()` never returns package tables (`SavedReport`, `ReportLog`, etc.) unless the `include_package_models` configuration is explicitly set to `true`.
+- **Alias Serialization Round-Trip**: The `ReportSerializer` was tested to verify that column aliases survive the full `toJson()` → `fromJson()` round-trip, ensuring that saved reports with custom aliases are correctly restored when loaded via `loadToEditor()` or `loadAndGenerate()`.

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use ReflectionClass;
 use ReflectionMethod;
 use Nisalatp\DynamicReportGenerator\Types\ReportRequest;
+use Nisalatp\DynamicReportGenerator\Types\Attribute;
 use Nisalatp\DynamicReportGenerator\Types\ModelInfo;
 use Nisalatp\DynamicReportGenerator\Types\ModelLink;
 use Nisalatp\DynamicReportGenerator\Types\JoinPlan;
@@ -21,6 +22,8 @@ use Nisalatp\DynamicReportGenerator\Types\JoinStep;
 use Nisalatp\DynamicReportGenerator\Types\FilterNode;
 use Nisalatp\DynamicReportGenerator\Types\FilterGroup;
 use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
+use Nisalatp\DynamicReportGenerator\Types\VirtualAttributeRequest;
+use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerSecurityException;
 use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Nisalatp\DynamicReportGenerator\Models\ReportLog;
@@ -35,6 +38,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportMaker
 {
+    /**
+     * Internal package models that are excluded from reportable tables by default.
+     * These are infrastructure tables used by the engine itself and should not
+     * appear in model-selection UIs unless explicitly enabled via config.
+     */
+    private const INTERNAL_MODELS = [
+        Models\SavedReport::class,
+        Models\ReportLog::class,
+        Models\RestrictedModel::class,
+        Models\AttributeRestriction::class,
+        Models\VirtualAttribute::class,
+    ];
+
     private ?array $allowedModels = null;
     private ?array $allApplicationModels = null;
     private ?array $restrictedModels = null;
@@ -61,10 +77,18 @@ class ReportMaker
         $allModels = $this->getAllApplicationModels();
         $restricted = $this->getRestrictedModels();
 
+        // Auto-exclude the package's own infrastructure models unless
+        // the host application explicitly opts in via config.
+        $excludeInternal = !config('dynamicreportgenerator.include_package_models', false);
+
         foreach ($allModels as $modelClass) {
-            if (!in_array($modelClass, $restricted)) {
-                $this->allowedModels[$modelClass] = $this->getModelInfo($modelClass);
+            if (in_array($modelClass, $restricted)) {
+                continue;
             }
+            if ($excludeInternal && in_array($modelClass, self::INTERNAL_MODELS)) {
+                continue;
+            }
+            $this->allowedModels[$modelClass] = $this->getModelInfo($modelClass);
         }
     }
 
@@ -74,6 +98,8 @@ class ReportMaker
         $this->ensureModelAllowed($whatUserWants->baseModel);
         $this->resolveAttributeRestrictions($subjects);
         $this->validateSecurity($whatUserWants);
+        $this->validateFilterDepth($whatUserWants->innerFilters, 'WHERE');
+        $this->validateFilterDepth($whatUserWants->outerFilters, 'HAVING');
         
         $targetModels = $whatUserWants->targetModels;
         $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
@@ -113,6 +139,12 @@ class ReportMaker
                 }
                 $finalQuery->orderBy($colName, $sort->direction);
             }
+        }
+
+        // Enforce the configured max_rows safety limit to protect the host from runaway queries.
+        $maxRows = config('dynamicreportgenerator.limits.max_rows');
+        if ($maxRows) {
+            $finalQuery->limit((int) $maxRows);
         }
 
         return $finalQuery;
@@ -187,7 +219,7 @@ class ReportMaker
         return $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
     }
 
-    public function buildScalarSubquery(\Nisalatp\DynamicReportGenerator\Types\VirtualAttributeRequest $request): string
+    public function buildScalarSubquery(VirtualAttributeRequest $request): string
     {
         $this->ensureModelsLoaded();
         $this->ensureModelAllowed($request->baseModel);
@@ -254,7 +286,7 @@ class ReportMaker
     {
         $columns = [];
         
-        $getInnerAlias = function(\Nisalatp\DynamicReportGenerator\Types\Attribute $attr) use ($whatUserWants) {
+        $getInnerAlias = function(Attribute $attr) use ($whatUserWants) {
             foreach ($whatUserWants->selectedAttributes as $selAttr) {
                 if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
                     return $selAttr->alias ?? $selAttr->column;
@@ -302,7 +334,7 @@ class ReportMaker
         foreach ($request->selectedAttributes as $attr) {
             if ($attr->isVirtual || str_starts_with($attr->column, 'va:')) {
                 $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
-                $va = $this->vaRegistry->findByName($baseModel, $name);
+                $va = $this->vaRegistry->findByName($attr->modelClass, $name);
                 if ($va && is_array($va->dependencies)) {
                     $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
                     $targetModels = array_merge($targetModels, $validDeps);
@@ -328,7 +360,7 @@ class ReportMaker
         } elseif ($node instanceof FilterLeaf) {
             if ($node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:')) {
                 $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
-                $va = $this->vaRegistry->findByName($baseModel, $name);
+                $va = $this->vaRegistry->findByName($node->attribute->modelClass, $name);
                 if ($va && is_array($va->dependencies)) {
                     $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
                     $targetModels = array_merge($targetModels, $validDeps);
@@ -475,6 +507,20 @@ class ReportMaker
     }
 
     /**
+     * Get the configured maximum filter nesting depth.
+     *
+     * Frontends should call this to limit how many levels of AND/OR group
+     * nesting the UI permits. The same value is enforced server-side in
+     * generate() to reject over-nested filter trees.
+     *
+     * @return int The maximum allowed nesting depth for filter groups.
+     */
+    public function getMaxFilterDepth(): int
+    {
+        return (int) config('dynamicreportgenerator.ui.max_filter_depth', 3);
+    }
+
+    /**
      * Schema Discovery: Get all available reportable models (All models MINUS restricted models).
      *
      * @return array Array of allowed model class names.
@@ -488,6 +534,10 @@ class ReportMaker
     /**
      * Schema Discovery: Discover and return ALL Eloquent models in the application.
      *
+     * If the 'reportable_models' config key contains a non-empty whitelist, only
+     * those models are returned. Otherwise, falls back to auto-discovery by
+     * scanning the application's model directories via Symfony Finder.
+     *
      * @return array Array of all model class names.
      */
     public function getAllApplicationModels(): array
@@ -496,6 +546,18 @@ class ReportMaker
             return $this->allApplicationModels;
         }
 
+        // If the host explicitly whitelisted models in config, use that list
+        // instead of auto-discovery. This gives full control over which
+        // models are visible to the reporting engine.
+        $configModels = config('dynamicreportgenerator.reportable_models', []);
+        if (!empty($configModels)) {
+            $this->allApplicationModels = array_values(array_filter($configModels, function ($class) {
+                return class_exists($class) && is_subclass_of($class, Model::class);
+            }));
+            return $this->allApplicationModels;
+        }
+
+        // Fallback: auto-discover all Eloquent models in the application.
         $models = [];
         $modelPaths = [app_path(), app_path('Models')];
         
@@ -716,6 +778,40 @@ class ReportMaker
     }
 
     /**
+     * Validate that filter nesting depth does not exceed the configured limit.
+     *
+     * Deeply nested AND/OR groups can produce complex SQL and are a potential
+     * abuse vector. This guard enforces the 'ui.max_filter_depth' config,
+     * which should also be respected by frontend UIs via getMaxFilterDepth().
+     *
+     * @param FilterNode|null $node The root filter node to validate.
+     * @param string $context 'WHERE' or 'HAVING', used in the error message.
+     * @param int $currentDepth Internal recursion tracker.
+     */
+    private function validateFilterDepth(?FilterNode $node, string $context = 'WHERE', int $currentDepth = 0): void
+    {
+        if ($node === null) {
+            return;
+        }
+
+        $maxDepth = $this->getMaxFilterDepth();
+
+        if ($node instanceof FilterGroup) {
+            $currentDepth++;
+            if ($currentDepth > $maxDepth) {
+                throw new ReportMakerException(
+                    "Filter nesting in {$context} clause exceeds the maximum allowed depth of {$maxDepth}. "
+                    . "Please simplify your filter structure."
+                );
+            }
+            foreach ($node->children as $child) {
+                $this->validateFilterDepth($child, $context, $currentDepth);
+            }
+        }
+        // FilterLeaf nodes don't add depth — they are terminals.
+    }
+
+    /**
      * Schema Discovery: Get all attributes (physical and virtual) for a model, excluding blocked ones.
      *
      * @param string $modelClass
@@ -773,10 +869,7 @@ class ReportMaker
      */
     public function getConnectedModels(string $modelClass): array
     {
-        $this->ensureModelsLoaded();
-        $this->ensureModelAllowed($modelClass);
-        $links = $this->discoverLinks();
-        return $links[$modelClass] ?? [];
+        return $this->getModelRelationships($modelClass);
     }
 
     private function getModelInfo(string $modelClass): ModelInfo
@@ -1083,7 +1176,7 @@ class ReportMaker
         return null;
     }
 
-    private function buildInnerQuery(string $base, JoinPlan $plan, array $selects, ?FilterNode $filters, ?array $subjects = null): Builder
+    private function buildInnerQuery(string $base, JoinPlan $plan, array $selects, ?FilterNode $filters): Builder
     {
         $baseInstance = new $base();
         $query = DB::table($baseInstance->getTable() . ' as t0');
@@ -1122,12 +1215,14 @@ class ReportMaker
 
             if ($isVirtual && $this->vaRegistry) {
                 $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
-                $va = $this->vaRegistry->findByName($base, $name);
+                $va = $this->vaRegistry->findByName($attr->modelClass, $name);
                 if ($va) {
-                    $selectColumns[] = DB::raw($va->sql_fragment . ' as "' . $finalAlias . '"');
+                    $aliasPrefix = $aliases[$attr->modelClass] ?? 't0';
+                    $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
+                    $selectColumns[] = DB::raw($fragment . ' as "' . $finalAlias . '"');
                     continue;
                 } else {
-                    throw new \Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException("Virtual Attribute '{$name}' is missing or deleted. This query cannot be executed.");
+                    throw new ReportMakerException("Virtual Attribute '{$name}' is missing or deleted. This query cannot be executed.");
                 }
             }
             $alias = $aliases[$attr->modelClass] ?? 't0';
@@ -1149,7 +1244,7 @@ class ReportMaker
         $selects = [];
         $groupCols = [];
 
-        $getInnerAlias = function(\Nisalatp\DynamicReportGenerator\Types\Attribute $attr) use ($innerSelects) {
+        $getInnerAlias = function(Attribute $attr) use ($innerSelects) {
             foreach ($innerSelects as $selAttr) {
                 if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
                     return $selAttr->alias ?? $selAttr->column;
@@ -1208,9 +1303,11 @@ class ReportMaker
             
             if ($isVirtual && $this->vaRegistry && $base) {
                 $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
-                $va = $this->vaRegistry->findByName($base, $name);
+                $va = $this->vaRegistry->findByName($node->attribute->modelClass, $name);
                 if ($va) {
-                    $col = DB::raw($va->sql_fragment);
+                    $aliasPrefix = $aliases[$node->attribute->modelClass] ?? 't0';
+                    $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
+                    $col = DB::raw($fragment);
                 } else {
                     $col = $type === 'where' 
                         ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
@@ -1250,7 +1347,9 @@ class ReportMaker
                 if ($type === 'where') $query->{$map['in']}($col, $value, $bool);
                 else {
                     $colStr = (string) $col;
-                    $query->havingRaw("$colStr in (" . implode(',', array_map(fn($v) => "'$v'", (array)$value)) . ")", [], $bool);
+                    $bindings = array_values((array) $value);
+                    $placeholders = implode(',', array_fill(0, count($bindings), '?'));
+                    $query->havingRaw("$colStr in ($placeholders)", $bindings, $bool);
                 }
             } elseif ($node->operator === 'between') {
                 $query->{$map['between']}($col, (array)$value, $bool);

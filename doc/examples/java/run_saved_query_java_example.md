@@ -52,17 +52,17 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -73,7 +73,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -83,13 +83,13 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -103,13 +103,13 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }

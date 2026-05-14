@@ -45,7 +45,7 @@ class ReportBuilderRequest
 
         $innerFilters = null;
         if (!empty($payload['innerFilters'])) {
-            if (isset($payload['innerFilters']['type']) && $payload['innerFilters']['type'] === 'group') {
+            if (isset($payload['innerFilters']['type'])) {
                 $innerFilters = self::parseFilterNode($payload['innerFilters']);
             } else {
                 $leaves = collect($payload['innerFilters'])
@@ -68,7 +68,7 @@ class ReportBuilderRequest
 
         $outerFilters = null;
         if (!empty($payload['outerFilters'])) {
-            if (isset($payload['outerFilters']['type']) && $payload['outerFilters']['type'] === 'group') {
+            if (isset($payload['outerFilters']['type'])) {
                 $outerFilters = self::parseFilterNode($payload['outerFilters'], true);
             } else {
                 $leaves = collect($payload['outerFilters'])

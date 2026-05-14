@@ -14,6 +14,7 @@ public class SchemaResponses {
         public String foreignKey;
         public String localKey;
         public String methodName;
+        public String direction; // "forward" or "reverse"
     }
 }
 ```
@@ -89,5 +90,6 @@ If the Java application calls `getModelAttributes("Order")`, the response list w
 If the Java application calls `getModelRelationships("Order")`, the response map will look like this:
 
 **Discoverable Relationships**
-- Key: `"User"`, Value: `Relationship { type: "BelongsTo", methodName: "user" }`
-- Key: `"Product"`, Value: `Relationship { type: "BelongsToMany", methodName: "products" }`
+- Key: `"User"`, Value: `Relationship { type: "BelongsTo", methodName: "user", direction: "forward" }`
+- Key: `"Product"`, Value: `Relationship { type: "BelongsToMany", methodName: "products", direction: "forward" }`
+- Key: `"OrderItem"`, Value: `Relationship { type: "HasMany", methodName: "orderItems", direction: "reverse" }` *(synthesized)*

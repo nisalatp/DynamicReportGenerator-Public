@@ -30,13 +30,18 @@ The user clicks "Generate Report". AlpineJS sends a JSON POST request to the ser
 
 ---
 
-### Step 3: Engine Ingestion & Dependency Extraction
-The host application passes the safe `ReportRequest` AST into the Dynamic Report Engine. The engine first scans the AST for any selected Virtual Attributes (like the user's requested `Total Spend`). 
+### Step 3: Engine Ingestion, Security & Dependency Extraction
+The host application passes the safe `ReportRequest` AST into the Dynamic Report Engine. The engine first validates security constraints, then scans the AST for any selected Virtual Attributes (like the user's requested `Total Spend`). 
 
 **Implementation Details:**
 - **File**: `fyp/public/src/ReportMaker.php`
-- **Function**: `extractVirtualAttributeDependencies()`
-- **Mechanism**: The engine recognizes that `Total Spend` is a Virtual Attribute. It queries the Singleton `VirtualAttributeRegistry` to fetch the raw SQL fragment, and notes that this subquery depends on the `Orders` table. It dynamically adds `Orders` to the list of tables that need to be joined.
+- **Functions**: `ensureModelAllowed()`, `resolveAttributeRestrictions()`, `validateSecurity()`, `validateFilterDepth()`, `extractVirtualAttributeDependencies()`
+- **Mechanism**: 
+  1. The engine verifies the base model is allowed (not restricted, not an internal package model, and present in the whitelist if configured).
+  2. It resolves ALS restrictions for the current user's subjects.
+  3. It validates that no blocked attributes are used in filters, sorts, or aggregates.
+  4. It validates that the filter nesting depth does not exceed `max_filter_depth` (default: 3).
+  5. It recognizes that `Total Spend` is a Virtual Attribute, queries the Singleton `VirtualAttributeRegistry` to fetch the raw SQL fragment, and notes that this subquery depends on the `Orders` table. It dynamically adds `Orders` to the list of tables that need to be joined.
 
 ---
 
@@ -67,9 +72,11 @@ The engine constructs the `SELECT` and `WHERE` clauses. Instead of querying all 
 ---
 
 ### Step 6: Query Execution & Response
-The engine finalizes the Laravel Query Builder instance and executes the query against the RDBMS. 
+The engine finalizes the Laravel Query Builder instance, applies the configurable `max_rows` safety limit, and the host application executes the query against the RDBMS. 
 
 **Implementation Details:**
 - **File**: `fyp/public/src/ReportMaker.php`
-- **Function**: `generate()` returns the `Illuminate\Database\Eloquent\Builder`.
-- **Mechanism**: Because of the Subquery Pushdown, MySQL/SQLite executes the C-level aggregations directly on the database hardware. The database returns a flat, paginated array of results. The PHP application maintains an O(1) memory footprint because it never hydrated thousands of Eloquent models. The array is returned as JSON to the AlpineJS frontend, and the End-User instantly sees their completed report.
+- **Function**: `generate()` returns an `Illuminate\Database\Query\Builder`.
+- **Mechanism**: Before returning, the engine applies `->limit(max_rows)` as a safety net (default: 5000). Because of the Subquery Pushdown, MySQL/SQLite executes the C-level aggregations directly on the database hardware. The database returns a flat, paginated array of results. The PHP application maintains an O(1) memory footprint because it never hydrated thousands of Eloquent models. The array is returned as JSON to the frontend, and the End-User instantly sees their completed report.
+  
+  Any masked attributes (e.g., `email` for a Data Analyst role) appear as `***` in the results, while blocked attributes appear as `###` — all enforced at the SQL compilation level, not the frontend.

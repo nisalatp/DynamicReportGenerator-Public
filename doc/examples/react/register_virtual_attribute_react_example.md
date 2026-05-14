@@ -13,8 +13,8 @@ export default function VARegistrar() {
   
   const [form, setForm] = useState({
     name: '',
-    model: 'Order',
-    type: 'integer',
+    base_model: 'Order',
+    return_type: 'integer',
     sql_fragment: ''
   });
 
@@ -56,15 +56,18 @@ export default function VARegistrar() {
       
       <div>
         <label>Model</label>
-        <select value={form.model} onChange={e => setForm({...form, model: e.target.value})}>
+        <select value={form.base_model} onChange={e => setForm({...form, base_model: e.target.value})}>
           <option value="Order">Order</option>
         </select>
       </div>
       
       <div>
-        <label>Type</label>
-        <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+        <label>Return Type</label>
+        <select value={form.return_type} onChange={e => setForm({...form, return_type: e.target.value})}>
+          <option value="string">String</option>
           <option value="integer">Integer</option>
+          <option value="boolean">Boolean</option>
+          <option value="date">Date</option>
         </select>
       </div>
 
@@ -105,17 +108,17 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -126,7 +129,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -136,13 +139,13 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -156,13 +159,13 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }

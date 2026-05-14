@@ -13,10 +13,11 @@ This example demonstrates how an AI Agent can dynamically register new Virtual A
     "properties": {
       "name": { "type": "string" },
       "model": { "type": "string", "description": "The Model this applies to, e.g. Order" },
-      "type": { "type": "string", "description": "integer, string, float, date" },
-      "sql_fragment": { "type": "string", "description": "The raw SQL snippet, e.g. SUM(amount)" }
+      "return_type": { "type": "string", "description": "integer, string, float, date" },
+      "sql_fragment": { "type": "string", "description": "The raw SQL snippet, e.g. SUM({THIS}.amount). CRITICAL: Always prefix physical columns with {THIS}. to prevent ambiguous column errors." },
+      "dependencies": { "type": "array", "items": { "type": "string" }, "description": "Array of target model names this requires a JOIN to calculate. DO NOT list column names here. Leave empty [] if it only uses the base model." }
     },
-    "required": ["name", "model", "type", "sql_fragment"]
+    "required": ["name", "model", "return_type", "sql_fragment"]
   }
 }
 ```
@@ -26,14 +27,15 @@ This example demonstrates how an AI Agent can dynamically register new Virtual A
 ```javascript
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "register_virtual_attribute") {
-    const { name, model, type, sql_fragment } = request.params.arguments;
+    const { name, model, return_type, sql_fragment, dependencies } = request.params.arguments;
 
     try {
       await axios.post("https://api.yourlaravelapp.com/va/register", {
         name,
-        model,
-        type,
-        sql_fragment
+        base_model: model,
+        return_type,
+        sql_fragment,
+        dependencies: dependencies || []
       }, {
         headers: { Authorization: "Bearer YOUR_ADMIN_TOKEN" }
       });
@@ -69,17 +71,17 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -90,7 +92,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -100,13 +102,13 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -120,13 +122,13 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }

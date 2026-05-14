@@ -32,12 +32,8 @@ entity "dynamic_report_user" as ReportUserPivot {
   * user_id : unsignedBigInteger
   created_at : timestamp
   updated_at : timestamp
-}
-
-entity "users" as User {
-  * id : unsignedBigInteger <<PK>>
-  --
-  (Client Application Table)
+  ..
+  <<unique>> (saved_report_id, user_id)
 }
 
 entity "dynamic_virtual_attributes" as VirtualAttribute {
@@ -45,15 +41,49 @@ entity "dynamic_virtual_attributes" as VirtualAttribute {
   --
   * name : varchar (e.g., 'total_order_value')
   * base_model : varchar (e.g., 'App\\Models\\Order')
+  * return_type : varchar (e.g., 'integer')
   * sql_fragment : text
   dependencies : json <<nullable>>
   created_at : timestamp
   updated_at : timestamp
+  ..
+  <<unique>> (name, base_model)
 }
 
-SavedReport ||--o{ ReportLog : "has many"
-SavedReport ||--o{ ReportUserPivot : "has many (assigned users)"
+entity "dynamic_restricted_models" as RestrictedModel {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * model_class : varchar <<unique>>
+  restricted_by : unsignedBigInteger <<nullable>> (Admin User ID)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "dynamic_attribute_restrictions" as AttributeRestriction {
+  * id : unsignedBigInteger <<PK>>
+  --
+  * model_class : varchar
+  * attribute : varchar
+  * restriction_type : enum ('masked', 'blocked')
+  subject_type : varchar <<nullable>> (Polymorphic)
+  subject_id : unsignedBigInteger <<nullable>> (Polymorphic)
+  created_by : unsignedBigInteger <<nullable>>
+  created_at : timestamp
+  updated_at : timestamp
+  ..
+  <<unique>> (model_class, attribute, subject_type, subject_id)
+}
+
+entity "users" as User {
+  * id : unsignedBigInteger <<PK>>
+  --
+  (Host Application Table)
+}
+
+SavedReport ||--o{ ReportLog : "has many (on delete set null)"
+SavedReport ||--o{ ReportUserPivot : "has many (on delete cascade)"
 User ||--o{ ReportUserPivot : "assigned to"
 User ||--o{ SavedReport : "owns"
+User ||--o{ AttributeRestriction : "subject (polymorphic)"
 
 @enduml

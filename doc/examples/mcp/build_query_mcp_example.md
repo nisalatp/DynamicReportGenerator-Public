@@ -23,9 +23,10 @@ You define an MCP Tool that the AI can call. The schema matches the `ReportReque
         "items": {
           "type": "object",
           "properties": {
-            "modelClass": { "type": "string" },
+            "model": { "type": "string" },
             "column": { "type": "string" },
-            "type": { "type": "string" }
+            "type": { "type": "string" },
+            "alias": { "type": "string", "description": "Crucial to prevent column collisions when joining multiple tables (e.g. User.name and Product.name)" }
           }
         }
       },
@@ -91,19 +92,24 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
 {
   "baseModel": "User",
   "targetModels": ["Order", "Product"],
-  "selectedAttributes": [],
+  "selectedAttributes": [
+    { "model": "User", "column": "country", "type": "string" },
+    { "model": "Product", "column": "category", "type": "string", "alias": "product_category" },
+    { "model": "Order", "column": "amount", "type": "integer" },
+    { "model": "Order", "column": "id", "type": "integer" }
+  ],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "model": "User", "column": "country", "type": "string" },
+    { "model": "Product", "column": "category", "type": "string", "alias": "product_category" }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "model": "Order", "column": "amount", "type": "integer",
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "model": "Order", "column": "id", "type": "integer",
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -114,7 +120,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "model": "User", "column": "status", "type": "string",
         "operator": "=",
         "value": "active"
       },
@@ -124,13 +130,13 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "model": "Product", "column": "category", "type": "string",
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "model": "Product", "column": "category", "type": "string",
                 "operator": "=",
                 "value": "Software"
             }
@@ -144,13 +150,13 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "model": "Order", "column": "amount", "type": "integer", "isVirtual": true,
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "model": "Order", "column": "id", "type": "integer", "isVirtual": true,
             "operator": ">",
             "value": 5
         }
@@ -158,7 +164,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "model": "Order", "column": "total_revenue", "isVirtual": true,
         "direction": "DESC"
     }
   ]

@@ -24,12 +24,17 @@ We expose three tools to the LLM so it can traverse the graph automatically.
   },
   {
     "name": "get_model_relationships",
-    "description": "Get all models that this model can join to, and the type of relationship.",
+    "description": "Get all models that this model can join to, and the type of relationship. Each edge includes a 'direction' field ('forward' or 'reverse') indicating how the relationship was discovered.",
     "parameters": {
       "type": "object",
       "properties": { "model": { "type": "string" } },
       "required": ["model"]
     }
+  },
+  {
+    "name": "get_max_filter_depth",
+    "description": "Get the maximum allowed nesting depth for AND/OR filter groups. The engine will reject payloads exceeding this depth.",
+    "parameters": { "type": "object", "properties": {} }
   }
 ]
 ```
@@ -49,6 +54,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "get_available_models") url = `${baseUrl}/models`;
     else if (name === "get_model_attributes") url = `${baseUrl}/models/${args.model}/attributes`;
     else if (name === "get_model_relationships") url = `${baseUrl}/models/${args.model}/relationships`;
+    else if (name === "get_max_filter_depth") url = `${baseUrl}/config/max-filter-depth`;
 
     const response = await axios.get(url, { headers });
 
@@ -75,11 +81,13 @@ The AI Agent doesn't know the schema yet. It executes the following sequence:
 
 1. **LLM Calls:** `get_available_models()`
    - **System Returns:** `["User", "Order", "Product"]`
-2. **LLM Calls:** `get_model_attributes("Order")`
+2. **LLM Calls:** `get_max_filter_depth()`
+   - **System Returns:** `{ "max_filter_depth": 3 }` (The LLM now knows the nesting constraint for filters).
+3. **LLM Calls:** `get_model_attributes("Order")`
    - **System Returns:** `["id", "amount", "user_id", "va:total_revenue"]` (The LLM now knows it can SUM the `amount` column).
-3. **LLM Calls:** `get_model_relationships("Order")`
-   - **System Returns:** `{"User": { "type": "BelongsTo", "methodName": "user" }}` (The LLM now knows `Order` connects to `User`).
-4. **LLM Calls:** `get_model_attributes("User")`
+4. **LLM Calls:** `get_model_relationships("Order")`
+   - **System Returns:** `{"User": { "type": "BelongsTo", "methodName": "user", "direction": "forward" }}` (The LLM now knows `Order` connects to `User`, and this is a forward-declared edge).
+5. **LLM Calls:** `get_model_attributes("User")`
    - **System Returns:** `["id", "name", "country"]` (The LLM now knows the `country` column exists).
 
 The AI Agent now has perfect context to build the correct AST payload and invoke the `generate_dynamic_report` tool!

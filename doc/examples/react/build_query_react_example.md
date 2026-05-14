@@ -29,8 +29,8 @@ export default function ReportBuilder() {
         ...prev,
         groupBys: [
             ...prev.groupBys,
-            { attribute: { modelClass: 'User', column: 'country', type: 'string' } },
-            { attribute: { modelClass: 'Product', column: 'category', type: 'string' } }
+            { attribute: { model: 'User', column: 'country', type: 'string' } },
+            { attribute: { model: 'Product', column: 'category', type: 'string' } }
         ]
     }));
   };
@@ -41,12 +41,12 @@ export default function ReportBuilder() {
         aggregates: [
             ...prev.aggregates,
             {
-                attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
+                attribute: { model: 'Order', column: 'amount', type: 'integer' },
                 function: 'SUM',
                 alias: 'total_revenue'
             },
             {
-                attribute: { modelClass: 'Order', column: 'id', type: 'integer' },
+                attribute: { model: 'Order', column: 'id', type: 'integer' },
                 function: 'COUNT',
                 alias: 'total_orders'
             }
@@ -63,7 +63,7 @@ export default function ReportBuilder() {
               children: [
                   {
                       type: 'leaf',
-                      attribute: { modelClass: 'User', column: 'status', type: 'string' },
+                      attribute: { model: 'User', column: 'status', type: 'string' },
                       operator: '=',
                       value: 'active'
                   },
@@ -73,13 +73,13 @@ export default function ReportBuilder() {
                       children: [
                           {
                               type: 'leaf',
-                              attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                              attribute: { model: 'Product', column: 'category', type: 'string' },
                               operator: '=',
                               value: 'Electronics'
                           },
                           {
                               type: 'leaf',
-                              attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                              attribute: { model: 'Product', column: 'category', type: 'string' },
                               operator: '=',
                               value: 'Software'
                           }
@@ -99,13 +99,13 @@ export default function ReportBuilder() {
                children: [
                    {
                        type: 'leaf',
-                       attribute: { modelClass: 'Order', column: 'amount', type: 'integer', isVirtual: true },
+                       attribute: { model: 'Order', column: 'amount', type: 'integer', isVirtual: true },
                        operator: '>',
                        value: 10000
                    },
                    {
                        type: 'leaf',
-                       attribute: { modelClass: 'Order', column: 'id', type: 'integer', isVirtual: true },
+                       attribute: { model: 'Order', column: 'id', type: 'integer', isVirtual: true },
                        operator: '>',
                        value: 5
                    }
@@ -178,17 +178,17 @@ When the user activates the React state components above, the `payload` object e
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "model": "User", "column": "country", "type": "string" } },
+    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "model": "Order", "column": "id", "type": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -199,7 +199,7 @@ When the user activates the React state components above, the `payload` object e
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "model": "User", "column": "status", "type": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -209,13 +209,13 @@ When the user activates the React state components above, the `payload` object e
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "model": "Product", "column": "category", "type": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -229,13 +229,13 @@ When the user activates the React state components above, the `payload` object e
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }
@@ -243,7 +243,7 @@ When the user activates the React state components above, the `payload` object e
   },
   "sorts": [
     {
-        "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true },
+        "attribute": { "model": "Order", "column": "total_revenue", "isVirtual": true },
         "direction": "DESC"
     }
   ]

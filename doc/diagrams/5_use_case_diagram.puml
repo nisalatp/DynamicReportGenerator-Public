@@ -5,53 +5,86 @@ left to right direction
 
 actor "End User" as User
 actor "Admin / Report Owner" as Admin
-actor "Client Application" as HostApp
+actor "Host Application" as HostApp
 
 package "Dynamic Report Generator Package" {
+  ' === Report Lifecycle ===
   usecase "Design Custom Report" as UC_Design
   usecase "Save Report" as UC_Save
   usecase "Execute Report" as UC_Execute
+  usecase "Export Report to CSV" as UC_Export
+  usecase "Load Report to Editor" as UC_LoadEdit
   usecase "Update Report" as UC_Update
   usecase "Delete Report" as UC_Delete
+
+  ' === Access Control ===
   usecase "Assign Report to User" as UC_Assign
   usecase "Unassign Report" as UC_Unassign
   usecase "View Assigned Reports" as UC_ViewAssigned
   usecase "View Audit Logs" as UC_Audit
-  
+
+  ' === Schema Discovery ===
+  usecase "Discover Available Models" as UC_DiscoverModels
+  usecase "Discover Model Attributes" as UC_DiscoverAttrs
   usecase "Discover Eloquent Relationships" as UC_Discover
+  usecase "Query Max Filter Depth" as UC_MaxDepth
+
+  ' === Engine Internals ===
   usecase "Generate SQL Query Builder" as UC_Generate
-  
+  usecase "Resolve BFS Join Path" as UC_BFS
+
+  ' === Virtual Attributes ===
   usecase "Define Virtual Attribute" as UC_DefineVA
-  
+  usecase "Compile Visual VA Payload" as UC_CompileVA
+  usecase "Delete Virtual Attribute (Safe)" as UC_DeleteVA
+
+  ' === Security ===
   usecase "Manage Restricted Models" as UC_RestrictModel
   usecase "Manage Attribute Security (ALS)" as UC_RestrictAttr
 }
 
-User --> UC_Execute
-User --> UC_ViewAssigned
+' --- End User ---
 User --> UC_Design
+User --> UC_Execute
+User --> UC_Export
 User --> UC_Save
+User --> UC_ViewAssigned
 
-Admin --> UC_Execute
-Admin --> UC_ViewAssigned
+' --- Admin ---
 Admin --> UC_Design
+Admin --> UC_Execute
+Admin --> UC_Export
 Admin --> UC_Save
+Admin --> UC_LoadEdit
 Admin --> UC_Update
 Admin --> UC_Delete
 Admin --> UC_Assign
 Admin --> UC_Unassign
 Admin --> UC_Audit
 Admin --> UC_DefineVA
+Admin --> UC_CompileVA
+Admin --> UC_DeleteVA
 Admin --> UC_RestrictModel
 Admin --> UC_RestrictAttr
 
+' --- Host Application ---
+HostApp --> UC_DiscoverModels
+HostApp --> UC_DiscoverAttrs
+HostApp --> UC_MaxDepth
+
+' --- Includes ---
 UC_Execute ..> UC_Generate : <<includes>>
+UC_Export ..> UC_Generate : <<includes>>
+UC_Generate ..> UC_BFS : <<includes>>
 UC_Design ..> UC_Discover : <<includes>>
+UC_Design ..> UC_DiscoverAttrs : <<includes>>
 
 note right of HostApp
-  The Host Laravel Application integrates
-  these use cases and handles actual HTTP
-  authentication and pagination.
+  The Host Laravel Application queries
+  the engine's Schema Discovery APIs to
+  dynamically populate frontend UIs. It
+  handles HTTP authentication, pagination,
+  and rendering.
 end note
 
 @enduml
