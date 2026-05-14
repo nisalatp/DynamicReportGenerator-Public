@@ -13,15 +13,16 @@ This document serves as a comprehensive academic guide to the UML diagrams locat
 **Code Evidence**:
 ```php
 // DynamicReportGeneratorServiceProvider.php
-public function register()
+public function register(): void
 {
-    $this->app->singleton(VirtualAttributeRegistry::class, function ($app) {
-        return VirtualAttributeRegistry::getInstance();
-    });
+    $this->mergeConfigFrom(
+        __DIR__.'/../../config/dynamicreportgenerator.php', 'dynamicreportgenerator'
+    );
 
-    $this->app->singleton('dynamic-report', function ($app) {
-        $models = config('dynamicreportgenerator.reportable_models', []);
-        return new ReportMaker($models, $app->make(VirtualAttributeRegistry::class));
+    $this->app->singleton(ReportMaker::class, function ($app) {
+        return new ReportMaker(
+            new VirtualAttributeRegistry()
+        );
     });
 }
 ```
@@ -104,9 +105,11 @@ public function generate(ReportRequest $whatUserWants, ?array $subjects = null):
 $isVirtual = $node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:');
 if ($isVirtual && $this->vaRegistry && $base) {
     $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
-    $va = $this->vaRegistry->findByName($base, $name);
+    $va = $this->vaRegistry->findByName($node->attribute->modelClass, $name);
     if ($va) {
-        $col = DB::raw($va->sql_fragment); // Injects the raw subquery (e.g. SELECT COUNT(...))
+        $aliasPrefix = $aliases[$node->attribute->modelClass] ?? 't0';
+        $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
+        $col = DB::raw($fragment); // Injects the raw subquery with correct table alias
     }
 }
 ```
@@ -120,18 +123,31 @@ if ($isVirtual && $this->vaRegistry && $base) {
 // ReportMaker.php
 public function getModelAttributes(string $modelClass): array
 {
+    $this->ensureModelsLoaded();
+    $this->ensureModelAllowed($modelClass);
+
     $table = $this->allowedModels[$modelClass]->table;
     $physicalCols = Schema::getColumnListing($table);
-    $virtualAttrs = $this->vaRegistry->getForModel($modelClass);
-    return array_merge($physicalCols, $virtualAttrs);
+
+    $virtualCols = [];
+    if ($this->vaRegistry) {
+        $virtualAttrs = $this->vaRegistry->getForModel($modelClass);
+        $virtualCols = $virtualAttrs->map(fn($va) => 'va:' . $va->name)->toArray();
+    }
+
+    $allCols = array_merge($physicalCols, $virtualCols);
+
+    // Exclude blocked attributes from schema discovery
+    $this->resolveAttributeRestrictions(null);
+    return array_values(array_filter($allCols, function ($col) use ($modelClass) {
+        return $this->getRestrictionType($modelClass, $col, str_starts_with($col, 'va:')) !== 'blocked';
+    }));
 }
 
-// Get all connected models (both forward-declared and reverse-synthesized)
+// Get all connected models — delegates to getModelRelationships()
 public function getConnectedModels(string $modelClass): array
 {
-    $this->ensureModelAllowed($modelClass);
-    $links = $this->discoverLinks(); // Uses cached bidirectional graph
-    return $links[$modelClass] ?? [];
+    return $this->getModelRelationships($modelClass);
 }
 
 // Expose configured filter nesting depth to frontends

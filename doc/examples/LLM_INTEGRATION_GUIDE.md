@@ -43,9 +43,9 @@ Edit `config/dynamicreportgenerator.php`:
 
 ```php
 return [
-    // Blacklist models (empty = auto-discover all Eloquent models)
-    'excluded_models' => [
-        // App\Models\SecretSystemModel::class,
+    // Whitelist models (empty = auto-discover all Eloquent models)
+    'reportable_models' => [
+        // App\Models\User::class,
     ],
     'include_package_models' => false,
     'limits' => ['max_rows' => 5000],
@@ -862,7 +862,7 @@ The complete, validated feature tree is located at: `doc/verification/Package Fe
 - 3 VA Manager, 1 VA Compiler, 21 Fluent Builder methods
 - 6 HTTP/Serialization, 13 DTOs, 1 Contract, 5 Models, 5 Infrastructure, 16 Internal
 
-**Source**: 33 PHP files, 2,676 total lines of code.
+**Source**: 33 PHP files, 2,684 total lines of code.
 
 ---
 

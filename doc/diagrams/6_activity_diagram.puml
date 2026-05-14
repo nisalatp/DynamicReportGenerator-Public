@@ -16,9 +16,9 @@ endif
 :Validate Base Model is Allowed;
 note right
   Checks `allowedModels` which excludes:
-  1. Restricted models
+  1. Restricted models (via `dynamic_restricted_models` table)
   2. Package internal models (unless config allows)
-  3. Models in `excluded_models` blacklist (if set)
+  If `reportable_models` config is set, only those are used.
 end note
 
 :Resolve Attribute Level Security (ALS)\nfor current subjects;
