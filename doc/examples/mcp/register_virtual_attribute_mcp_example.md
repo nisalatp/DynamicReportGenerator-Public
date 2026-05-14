@@ -11,11 +11,11 @@ This example demonstrates how an AI Agent can dynamically register new Virtual A
   "parameters": {
     "type": "object",
     "properties": {
-      "name": { "type": "string" },
-      "modelClass": { "type": "string", "description": "The Model this applies to, e.g. Order" },
-      "return_type": { "type": "string", "description": "integer, string, float, date" },
-      "sql_fragment": { "type": "string", "description": "The raw SQL snippet, e.g. SUM({THIS}.amount). CRITICAL: Always prefix physical columns with {THIS}. to prevent ambiguous column errors." },
-      "dependencies": { "type": "array", "items": { "type": "string" }, "description": "Array of target model names this requires a JOIN to calculate. DO NOT list column names here. Leave empty [] if it only uses the base model." }
+      "name": { "dataType": "string" },
+      "modelClass": { "dataType": "string", "description": "The Model this applies to, e.g. Order" },
+      "return_type": { "dataType": "string", "description": "integer, string, float, date" },
+      "sql_fragment": { "dataType": "string", "description": "The raw SQL snippet, e.g. SUM({THIS}.amount). CRITICAL: Always prefix physical columns with {THIS}. to prevent ambiguous column errors." },
+      "dependencies": { "type": "array", "items": { "dataType": "string" }, "description": "Array of target model names this requires a JOIN to calculate. DO NOT list column names here. Leave empty [] if it only uses the base model." }
     },
     "required": ["name", "model", "return_type", "sql_fragment"]
   }
@@ -78,14 +78,14 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -94,7 +94,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -103,7 +103,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -118,7 +118,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -132,7 +132,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -142,7 +142,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -160,7 +160,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -171,7 +171,7 @@ Once registered, it invokes the `generate_dynamic_report` tool with the followin
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

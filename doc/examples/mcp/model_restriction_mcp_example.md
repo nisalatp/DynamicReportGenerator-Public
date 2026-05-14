@@ -17,7 +17,7 @@ This example demonstrates how an AI Agent can manage whole-model access restrict
     "parameters": {
       "type": "object",
       "properties": {
-        "model_class": { "type": "string", "description": "The fully qualified model class name." }
+        "model_class": { "dataType": "string", "description": "The fully qualified model class name." }
       },
       "required": ["model_class"]
     }
@@ -28,7 +28,7 @@ This example demonstrates how an AI Agent can manage whole-model access restrict
     "parameters": {
       "type": "object",
       "properties": {
-        "model_class": { "type": "string", "description": "The fully qualified model class name." }
+        "model_class": { "dataType": "string", "description": "The fully qualified model class name." }
       },
       "required": ["model_class"]
     }

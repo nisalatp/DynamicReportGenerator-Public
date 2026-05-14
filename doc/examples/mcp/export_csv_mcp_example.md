@@ -16,7 +16,7 @@ This example demonstrates how an AI Agent can trigger a CSV export of a dynamica
         "description": "The full ReportRequest AST payload (see AST_REFERENCE.md)."
       },
       "filename": {
-        "type": "string",
+        "dataType": "string",
         "description": "The desired filename for the CSV download (e.g., 'revenue_report.csv')."
       }
     },

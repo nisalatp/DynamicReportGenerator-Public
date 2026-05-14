@@ -12,9 +12,9 @@ This example demonstrates how an AI Agent can manage the lifecycle of saved repo
     "parameters": {
       "type": "object",
       "properties": {
-        "report_id": { "type": "integer", "description": "The ID of the saved report to update." },
-        "name": { "type": "string", "description": "New name for the report." },
-        "description": { "type": "string", "description": "New description." }
+        "report_id": { "dataType": "integer", "description": "The ID of the saved report to update." },
+        "name": { "dataType": "string", "description": "New name for the report." },
+        "description": { "dataType": "string", "description": "New description." }
       },
       "required": ["report_id"]
     }
@@ -25,7 +25,7 @@ This example demonstrates how an AI Agent can manage the lifecycle of saved repo
     "parameters": {
       "type": "object",
       "properties": {
-        "report_id": { "type": "integer", "description": "The ID of the saved report to delete." }
+        "report_id": { "dataType": "integer", "description": "The ID of the saved report to delete." }
       },
       "required": ["report_id"]
     }

@@ -54,20 +54,20 @@ const payload = reactive({
 
 const addMultipleGroupBys = () => {
     payload.groupBys.push(
-        { attribute: { modelClass: 'User', column: 'country', type: 'string' } },
-        { attribute: { modelClass: 'Product', column: 'category', type: 'string' } }
+        { attribute: { modelClass: 'User', column: 'country', dataType: 'string' } },
+        { attribute: { modelClass: 'Product', column: 'category', dataType: 'string' } }
     );
 };
 
 const addMultipleAggregates = () => {
     payload.aggregates.push(
         {
-            attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
+            attribute: { modelClass: 'Order', column: 'amount', dataType: 'integer' },
             function: 'SUM',
             alias: 'total_revenue'
         },
         {
-            attribute: { modelClass: 'Order', column: 'id', type: 'integer' },
+            attribute: { modelClass: 'Order', column: 'id', dataType: 'integer' },
             function: 'COUNT',
             alias: 'total_orders'
         }
@@ -81,7 +81,7 @@ const addComplexFilterGroup = () => {
         children: [
             {
                 type: 'leaf',
-                attribute: { modelClass: 'User', column: 'status', type: 'string' },
+                attribute: { modelClass: 'User', column: 'status', dataType: 'string' },
                 operator: '=',
                 value: 'active'
             },
@@ -91,13 +91,13 @@ const addComplexFilterGroup = () => {
                 children: [
                     {
                         type: 'leaf',
-                        attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                        attribute: { modelClass: 'Product', column: 'category', dataType: 'string' },
                         operator: '=',
                         value: 'Electronics'
                     },
                     {
                         type: 'leaf',
-                        attribute: { modelClass: 'Product', column: 'category', type: 'string' },
+                        attribute: { modelClass: 'Product', column: 'category', dataType: 'string' },
                         operator: '=',
                         value: 'Software'
                     }
@@ -114,13 +114,13 @@ const addComplexHavingFilter = () => {
          children: [
              {
                  type: 'leaf',
-                 attribute: { modelClass: 'Order', column: 'amount', type: 'integer', isVirtual: true },
+                 attribute: { modelClass: 'Order', column: 'amount', dataType: 'integer', isVirtual: true },
                  operator: '>',
                  value: 10000
              },
              {
                  type: 'leaf',
-                 attribute: { modelClass: 'Order', column: 'id', type: 'integer', isVirtual: true },
+                 attribute: { modelClass: 'Order', column: 'id', dataType: 'integer', isVirtual: true },
                  operator: '>',
                  value: 5
              }
@@ -165,14 +165,14 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -181,7 +181,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -190,7 +190,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -205,7 +205,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -219,7 +219,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -229,7 +229,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -247,7 +247,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -258,7 +258,7 @@ When the user activates the UI buttons above, the Vue reactive state builds and 
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

@@ -45,7 +45,7 @@ The `Attribute` object is heavily used across `selectedAttributes`, `groupBys`, 
 {
   "modelClass": "User",
   "column": "email",
-  "type": "string",
+  "dataType": "string",
   "isVirtual": false,
   "jsonPath": null,
   "alias": null
@@ -57,7 +57,8 @@ The `Attribute` object is heavily used across `selectedAttributes`, `groupBys`, 
 |-------|------|-------------|-----------|
 | `model` | `string` | The exact Model class name (e.g., `"User"`). | **Yes** |
 | `column` | `string` | The exact database column name or Virtual Attribute name. | **Yes** |
-| `type` | `string` | The data type (e.g., `"string"`, `"integer"`, `"date"`). Used for validation. | **Yes** |
+| `type` | `string` | The data type (e.g., `"string"`, `"integer"`, `"date"`). Used for validation. | No |
+| `dataType` | `string` | **RECOMMENDED**: Use this instead of `type` to avoid collisions with node types in filters. | No |
 | `isVirtual` | `boolean` | Set to `true` if this is a Virtual Attribute. | No (Default: `false`) |
 | `jsonPath` | `string` \| `null` | Used if extracting data from a JSON column. | No |
 | `alias` | `string` \| `null` | SQL `AS` alias. **CRITICAL:** Use this if you are joining multiple tables that have the same column name (e.g. `User.name` and `Product.name`) to prevent collisions in the final result set. | No |
@@ -71,8 +72,8 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ### `GroupBy` Example (Multiple Groupings)
 ```json
 "groupBys": [
-  { "modelClass": "User", "column": "country", "type": "string" },
-  { "modelClass": "Product", "column": "category", "type": "string", "alias": "product_category" }
+  { "modelClass": "User", "column": "country", "dataType": "string" },
+  { "modelClass": "Product", "column": "category", "dataType": "string", "alias": "product_category" }
 ]
 ```
 
@@ -80,12 +81,12 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ```json
 "aggregates": [
   {
-    "modelClass": "Order", "column": "amount", "type": "integer",
+    "modelClass": "Order", "column": "amount", "dataType": "integer",
     "function": "SUM",
     "alias": "total_revenue"
   },
   {
-    "modelClass": "Order", "column": "id", "type": "integer",
+    "modelClass": "Order", "column": "id", "dataType": "integer",
     "function": "COUNT",
     "alias": "total_orders"
   }
@@ -130,12 +131,15 @@ A single condition. It **must** contain a `type: "leaf"` flag.
   "attribute": {
     "modelClass": "User",
     "column": "status",
-    "type": "string"
+    "dataType": "integer"
   },
   "operator": ">",
   "value": 1000
 }
 ```
+
+> [!TIP]
+> Always use `dataType` instead of `type` inside a `FilterLeaf`. If you flatten your attribute object into the leaf, the property `"type": "leaf"` will overwrite your data type (e.g., `"dataType": "string"`), which will break the engine's ability to cast numeric values correctly.
 
 #### Allowed Operators
 The backend strictly sanitizes operators. You **must** use one of the following:
@@ -228,7 +232,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -237,7 +241,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer",
+                "dataType": "integer",
                 "function": "SUM",
                 "alias": "total_revenue"
             },
@@ -248,7 +252,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer",
+                "dataType": "integer",
                 "function": "COUNT",
                 "alias": "total_orders"
             },
@@ -265,7 +269,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -281,7 +285,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -292,7 +296,7 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -313,3 +317,13 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
     ]
 }
 ```
+### C. Important: `outerFilters` (HAVING) and Alias Resolution
+
+When defining `outerFilters` (which compile to SQL `HAVING` clauses), you do not need to know the internal aggregate alias (e.g., `sum_orders_amount`). 
+
+The engine performs **automatic alias mapping**:
+1. If you filter on a column that is part of an aggregate (e.g., `amount`), the engine will automatically find the generated alias (or the one you provided in the `Aggregate` object).
+2. For cross-database compatibility (especially SQLite), ensure you provide the correct `dataType: "number"` or `"integer"`. This allows the engine to bypass driver-level string binding quirks that can cause incorrect numeric evaluations.
+
+---
+*Last Updated: 2026-05-14*

@@ -17,8 +17,8 @@ This example demonstrates how an AI Agent can manage **Report Access Control** â
   "parameters": {
     "type": "object",
     "properties": {
-      "report_id": { "type": "integer", "description": "The SavedReport ID to grant access to" },
-      "user_id": { "type": "integer", "description": "The User ID who should be granted access" }
+      "report_id": { "dataType": "integer", "description": "The SavedReport ID to grant access to" },
+      "user_id": { "dataType": "integer", "description": "The User ID who should be granted access" }
     },
     "required": ["report_id", "user_id"]
   }
@@ -34,8 +34,8 @@ This example demonstrates how an AI Agent can manage **Report Access Control** â
   "parameters": {
     "type": "object",
     "properties": {
-      "report_id": { "type": "integer", "description": "The SavedReport ID" },
-      "user_id": { "type": "integer", "description": "The User ID to revoke access from" }
+      "report_id": { "dataType": "integer", "description": "The SavedReport ID" },
+      "user_id": { "dataType": "integer", "description": "The User ID to revoke access from" }
     },
     "required": ["report_id", "user_id"]
   }

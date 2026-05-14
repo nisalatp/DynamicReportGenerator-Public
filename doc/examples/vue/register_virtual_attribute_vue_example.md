@@ -104,14 +104,14 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -120,7 +120,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -129,7 +129,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -144,7 +144,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -158,7 +158,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -168,7 +168,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -186,7 +186,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -197,7 +197,7 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

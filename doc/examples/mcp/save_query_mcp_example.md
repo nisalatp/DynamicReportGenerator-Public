@@ -11,8 +11,8 @@ This example demonstrates how an AI Agent can save a complex report configuratio
   "parameters": {
     "type": "object",
     "properties": {
-      "name": { "type": "string", "description": "A human-readable name for the report" },
-      "description": { "type": "string", "description": "What this report does" },
+      "name": { "dataType": "string", "description": "A human-readable name for the report" },
+      "description": { "dataType": "string", "description": "What this report does" },
       "payload": {
         "type": "object",
         "description": "The exact AST object representing the report logic"
@@ -71,17 +71,17 @@ The LLM parses the intent, recalls the AST from the conversation context, and in
     "targetModels": ["Order", "Product"],
     "selectedAttributes": [],
     "groupBys": [
-      { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-      { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+      { "attribute": { "modelClass": "User", "column": "country", "dataType": "string" } },
+      { "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" } }
     ],
     "aggregates": [
       { 
-        "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+        "attribute": { "modelClass": "Order", "column": "amount", "dataType": "integer" },
         "function": "SUM",
         "alias": "total_revenue"
       },
       { 
-        "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+        "attribute": { "modelClass": "Order", "column": "id", "dataType": "integer" },
         "function": "COUNT",
         "alias": "total_orders"
       }
@@ -92,7 +92,7 @@ The LLM parses the intent, recalls the AST from the conversation context, and in
       "children": [
         {
           "type": "leaf",
-          "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+          "attribute": { "modelClass": "User", "column": "status", "dataType": "string" },
           "operator": "=",
           "value": "active"
         },
@@ -102,13 +102,13 @@ The LLM parses the intent, recalls the AST from the conversation context, and in
           "children": [
               {
                   "type": "leaf",
-                  "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                  "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" },
                   "operator": "=",
                   "value": "Electronics"
               },
               {
                   "type": "leaf",
-                  "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                  "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" },
                   "operator": "=",
                   "value": "Software"
               }
@@ -122,13 +122,13 @@ The LLM parses the intent, recalls the AST from the conversation context, and in
       "children": [
           {
               "type": "leaf",
-              "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+              "attribute": { "modelClass": "Order", "column": "amount", "dataType": "integer", "isVirtual": true },
               "operator": ">",
               "value": 10000
           },
           {
               "type": "leaf",
-              "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+              "attribute": { "modelClass": "Order", "column": "id", "dataType": "integer", "isVirtual": true },
               "operator": ">",
               "value": 5
           }

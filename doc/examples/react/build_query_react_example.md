@@ -178,17 +178,17 @@ When the user activates the React state components above, the `payload` object e
   "targetModels": ["Order", "Product"],
   "selectedAttributes": [],
   "groupBys": [
-    { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
-    { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
+    { "attribute": { "modelClass": "User", "column": "country", "dataType": "string" } },
+    { "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" } }
   ],
   "aggregates": [
     { 
-      "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
+      "attribute": { "modelClass": "Order", "column": "amount", "dataType": "integer" },
       "function": "SUM",
       "alias": "total_revenue"
     },
     { 
-      "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
+      "attribute": { "modelClass": "Order", "column": "id", "dataType": "integer" },
       "function": "COUNT",
       "alias": "total_orders"
     }
@@ -199,7 +199,7 @@ When the user activates the React state components above, the `payload` object e
     "children": [
       {
         "type": "leaf",
-        "attribute": { "modelClass": "User", "column": "status", "type": "string" },
+        "attribute": { "modelClass": "User", "column": "status", "dataType": "string" },
         "operator": "=",
         "value": "active"
       },
@@ -209,13 +209,13 @@ When the user activates the React state components above, the `payload` object e
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" },
                 "operator": "=",
                 "value": "Electronics"
             },
             {
                 "type": "leaf",
-                "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
+                "attribute": { "modelClass": "Product", "column": "category", "dataType": "string" },
                 "operator": "=",
                 "value": "Software"
             }
@@ -229,13 +229,13 @@ When the user activates the React state components above, the `payload` object e
     "children": [
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+            "attribute": { "modelClass": "Order", "column": "amount", "dataType": "integer", "isVirtual": true },
             "operator": ">",
             "value": 10000
         },
         {
             "type": "leaf",
-            "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
+            "attribute": { "modelClass": "Order", "column": "id", "dataType": "integer", "isVirtual": true },
             "operator": ">",
             "value": 5
         }

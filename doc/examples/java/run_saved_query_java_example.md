@@ -59,14 +59,14 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -75,7 +75,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -84,7 +84,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -99,7 +99,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -113,7 +113,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -123,7 +123,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -141,7 +141,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -152,7 +152,7 @@ The Java client only passes the `reportId`. The Laravel backend fetches the reco
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

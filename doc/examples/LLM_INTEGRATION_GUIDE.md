@@ -373,7 +373,7 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
         {
             "modelClass": "App\\Models\\User",
             "column": "name",
-            "type": "string"
+            "dataType": "string"
         }
     ],
     "innerFilters": {
@@ -385,7 +385,7 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
                 "attribute": {
                     "modelClass": "App\\Models\\User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -397,7 +397,7 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
             "attribute": {
                 "modelClass": "App\\Models\\User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -406,7 +406,7 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
             "attribute": {
                 "modelClass": "App\\Models\\Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -418,7 +418,7 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
             "attribute": {
                 "modelClass": "App\\Models\\User",
                 "column": "name",
-                "type": "string"
+                "dataType": "string"
             },
             "direction": "ASC"
         }
@@ -772,6 +772,8 @@ To ensure the LLM generates valid AST payloads without hallucination, include th
 3. **Collision Prevention**: "If you select or group by columns with the exact same name from different models, you MUST provide a unique `alias` for them."
 4. **Virtual Attributes Workflow**: "If you need to group by a date part (like month or year), use the `register_virtual_attribute` tool FIRST to create a computed column, then use that new attribute (prefix with `va:`) in the report payload."
 5. **Virtual Attributes Ambiguity Rule**: "When registering a virtual attribute, ALWAYS prefix physical columns with `{THIS}.` (e.g., `strftime('%Y-%m', {THIS}.created_at)` instead of `strftime('%Y-%m', created_at)`). The engine dynamically aliases tables during BFS joins, so raw column names will cause ambiguous column errors."
+6. **DataType vs Structure Type (CRITICAL)**: "In `FilterLeaf` objects, ALWAYS provide the attribute's data type in the `dataType` field (e.g., `"dataType": "number"`). Avoid using the `"type"` field for the attribute type, as it collisions with the node's `"type": "leaf"` property when the payload is flattened."
+7. **Visualization Readiness**: "When a user asks for a chart or graph, ensure you provide exactly one `groupBy` (categorical) and at least one `aggregate` (numeric). The engine's output is optimized for instant consumption by libraries like Chart.js."
 
 ### Payload Normalization
 

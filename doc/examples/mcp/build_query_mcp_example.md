@@ -16,17 +16,17 @@ You define an MCP Tool that the AI can call. The schema matches the `ReportReque
   "parameters": {
     "type": "object",
     "properties": {
-      "baseModel": { "type": "string" },
-      "targetModels": { "type": "array", "items": { "type": "string" } },
+      "baseModel": { "dataType": "string" },
+      "targetModels": { "type": "array", "items": { "dataType": "string" } },
       "selectedAttributes": {
         "type": "array",
         "items": {
           "type": "object",
           "properties": {
-            "modelClass": { "type": "string" },
-            "column": { "type": "string" },
-            "type": { "type": "string" },
-            "alias": { "type": "string", "description": "Crucial to prevent column collisions when joining multiple tables (e.g. User.name and Product.name)" }
+            "modelClass": { "dataType": "string" },
+            "column": { "dataType": "string" },
+            "type": { "dataType": "string" },
+            "alias": { "dataType": "string", "description": "Crucial to prevent column collisions when joining multiple tables (e.g. User.name and Product.name)" }
           }
         }
       },
@@ -99,18 +99,18 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
         {
             "modelClass": "User",
             "column": "country",
-            "type": "string"
+            "dataType": "string"
         },
         {
             "modelClass": "Product",
             "column": "category",
-            "type": "string",
+            "dataType": "string",
             "alias": "product_category"
         },
         {
             "modelClass": "Order",
             "column": "amount",
-            "type": "integer"
+            "dataType": "integer"
         },
         {
             "modelClass": "Order",
@@ -124,14 +124,14 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string",
+                "dataType": "string",
                 "alias": "product_category"
             },
             "alias": "product_category"
@@ -142,7 +142,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer",
+                "dataType": "integer",
                 "function": "SUM",
                 "alias": "total_revenue"
             },
@@ -153,7 +153,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer",
+                "dataType": "integer",
                 "function": "COUNT",
                 "alias": "total_orders"
             },
@@ -166,7 +166,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
         "logic": "and",
         "children": [
             {
-                "type": "string",
+                "dataType": "string",
                 "modelClass": "User",
                 "column": "status",
                 "operator": "=",
@@ -177,14 +177,14 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
                 "logic": "or",
                 "children": [
                     {
-                        "type": "string",
+                        "dataType": "string",
                         "modelClass": "Product",
                         "column": "category",
                         "operator": "=",
                         "value": "Electronics"
                     },
                     {
-                        "type": "string",
+                        "dataType": "string",
                         "modelClass": "Product",
                         "column": "category",
                         "operator": "=",
@@ -199,7 +199,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
         "logic": "and",
         "children": [
             {
-                "type": "integer",
+                "dataType": "integer",
                 "modelClass": "Order",
                 "column": "amount",
                 "isVirtual": true,
@@ -207,7 +207,7 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
                 "value": 10000
             },
             {
-                "type": "integer",
+                "dataType": "integer",
                 "modelClass": "Order",
                 "column": "id",
                 "isVirtual": true,

@@ -80,14 +80,14 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -96,7 +96,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -105,7 +105,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -120,7 +120,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -134,7 +134,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -144,7 +144,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -162,7 +162,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -173,7 +173,7 @@ When the user clicks "Load into Editor", the React state is updated via `onSelec
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

@@ -14,12 +14,12 @@ Key achievements include:
 - **AI-Driven MCP Integration**: Because the engine relies on a strict JSON AST and provides universal security enforcement, it seamlessly integrates with the Model Context Protocol (MCP). AI agents (like Claude or GPT-4) can instantly convert natural language into safe, executable AST payloads while inherently respecting the human user's Report Assignment scopes and Attribute-Level Security (ALS) data masking.
 - **Configuration-Driven Safety**: The engine enforces multiple layers of production-hardened safety boundaries — configurable execution row limits (`max_rows`), filter nesting depth validation (`max_filter_depth`), internal infrastructure model auto-exclusion, and reportable model whitelisting — ensuring secure operation in large-scale enterprise deployments without requiring custom middleware from the host application.
 - **Fluent Builder API**: The `ReportBuilder` and `FilterBuilder` provide a programmatic, method-chaining interface for constructing reports in code, enabling integration tests and backend automation without raw JSON manipulation.
+- **Integrated Visual Analytics**: The project successfully demonstrated that the decoupled JSON AST architecture is natively "Chart-Ready." By piping aggregated results directly into Chart.js, the system proved it can generate real-time visual dashboards (Bar, Line, Pie charts) without requiring specialized BI middleware.
 
 ## 5.2 Project Limitations
 While the system is robust, certain limitations exist in the current implementation:
 1. **RDBMS Restriction**: The engine strictly relies on the Laravel Eloquent Query Builder grammar. It does not currently support NoSQL document databases like MongoDB, as graph-based relational joins do not cleanly map to NoSQL document structures.
-2. **Visual Data Representation**: The core package strictly returns raw JSON data arrays, BFS Join Plans, and SQL footprints. It does not natively bundle charting libraries (e.g., Chart.js, D3.js). The responsibility of rendering graphs falls entirely on the host application's frontend developers.
-3. **Non-Circular Graph Assumption**: The BFS join pathfinder assumes non-circular relationship structures. Highly recursive schemas (e.g., self-referencing hierarchical models) may require tuning of relationship declarations to avoid ambiguous paths.
+2. **Non-Circular Graph Assumption**: The BFS join pathfinder assumes non-circular relationship structures. Highly recursive schemas (e.g., self-referencing hierarchical models) may require tuning of relationship declarations to avoid ambiguous paths.
 
 ## 5.3 Future Scope and Enhancements
 The decoupled nature of the AST provides massive potential for future expansions. Proposed enhancements include:

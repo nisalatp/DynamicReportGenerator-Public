@@ -18,7 +18,7 @@ We expose three tools to the LLM so it can traverse the graph automatically.
     "description": "Get all queryable columns (both physical and virtual) for a specific model.",
     "parameters": {
       "type": "object",
-      "properties": { "modelClass": { "type": "string" } },
+      "properties": { "modelClass": { "dataType": "string" } },
       "required": ["model"]
     }
   },
@@ -27,7 +27,7 @@ We expose three tools to the LLM so it can traverse the graph automatically.
     "description": "Get all models that this model can join to, and the type of relationship. Each edge includes a 'direction' field ('forward' or 'reverse') indicating how the relationship was discovered.",
     "parameters": {
       "type": "object",
-      "properties": { "modelClass": { "type": "string" } },
+      "properties": { "modelClass": { "dataType": "string" } },
       "required": ["model"]
     }
   },

@@ -169,14 +169,14 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -185,7 +185,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -194,7 +194,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -209,7 +209,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -223,7 +223,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -233,7 +233,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -251,7 +251,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -262,7 +262,7 @@ If the user clicks the 4 buttons in the UI above, the Blade template will constr
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

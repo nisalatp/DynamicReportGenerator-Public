@@ -57,3 +57,19 @@ A suite of configuration-driven safety mechanisms was evaluated to ensure the en
 - **Reportable Models Whitelist**: When the `reportable_models` configuration array is populated, only the listed models are available to the engine. When empty, the engine falls back to auto-discovery via Symfony Finder. Both paths were validated to correctly filter models through `class_exists()` and `is_subclass_of(Model::class)` checks.
 - **Internal Model Auto-Exclusion**: The engine's own infrastructure models are automatically excluded from the reportable model list via the `INTERNAL_MODELS` constant. This was verified by confirming that `getAvailableModels()` never returns package tables (`SavedReport`, `ReportLog`, etc.) unless the `include_package_models` configuration is explicitly set to `true`.
 - **Alias Serialization Round-Trip**: The `ReportSerializer` was tested to verify that column aliases survive the full `toJson()` → `fromJson()` round-trip, ensuring that saved reports with custom aliases are correctly restored when loaded via `loadToEditor()` or `loadAndGenerate()`.
+
+## 4.8 SQL Dialect Sanitization & Driver Integrity
+During evaluation in an SQLite-based demonstration environment, a critical edge case was identified and resolved regarding **SQL Type Affinity**:
+
+- **The Challenge**: Standard PDO parameter binding often converts numeric values into strings during transport. SQLite's dynamic type system evaluates `Numeric < String` as `TRUE` regardless of the values. This caused `HAVING` filters on computed aggregate aliases (which lack native database-level type affinity) to return unfiltered results in local testing.
+- **The Evaluation Result**: The engine was hardened with an **Auto-Numeric Injection** mechanism. By detecting numeric thresholds and securely injecting validated float/int literals directly into the `havingRaw` statement, the system successfully bypassed driver-level string-binding quirks.
+- **Conclusion**: This evaluation proves the engine's resilience across heterogeneous database environments (MySQL vs. SQLite), ensuring that the same JSON AST payload yields consistent, accurate results regardless of the underlying database driver.
+
+## 4.9 Visual Analytics & Chart Integration Readiness
+A final evaluation phase confirmed that the engine's aggregated JSON output is **"Chart-Ready"** out of the box. 
+- **Evaluation Method**: A dynamic Chart.js integration was built into the demonstration app. 
+- **Result**: The engine's flat, aliased response format allowed for O(1) transformation into Chart.js datasets. By automatically mapping `groupBys` to X-axis labels and `aggregates` to Y-axis datasets, the system successfully proved that complex relational data can be converted into visual insights without any additional backend processing.
+- **Implication**: This validates the methodology that a strictly-typed AST not only secures the query but also structures the data for immediate business intelligence consumption.
+
+---
+*Last Updated: 2026-05-14*

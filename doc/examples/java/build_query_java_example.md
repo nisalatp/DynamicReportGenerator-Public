@@ -168,14 +168,14 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -184,7 +184,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -193,7 +193,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -208,7 +208,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -222,7 +222,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -232,7 +232,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -250,7 +250,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -261,7 +261,7 @@ When the Java `generateReport()` method is executed, the `ObjectMapper` parses t
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

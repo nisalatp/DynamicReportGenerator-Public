@@ -11,7 +11,7 @@ This example demonstrates how an AI Agent can execute a saved report configurati
   "parameters": {
     "type": "object",
     "properties": {
-      "reportId": { "type": "integer" }
+      "reportId": { "dataType": "integer" }
     },
     "required": ["reportId"]
   }
@@ -67,14 +67,14 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
             "attribute": {
                 "modelClass": "User",
                 "column": "country",
-                "type": "string"
+                "dataType": "string"
             }
         },
         {
             "attribute": {
                 "modelClass": "Product",
                 "column": "category",
-                "type": "string"
+                "dataType": "string"
             }
         }
     ],
@@ -83,7 +83,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
             "attribute": {
                 "modelClass": "Order",
                 "column": "amount",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "SUM",
             "alias": "total_revenue"
@@ -92,7 +92,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
             "attribute": {
                 "modelClass": "Order",
                 "column": "id",
-                "type": "integer"
+                "dataType": "integer"
             },
             "function": "COUNT",
             "alias": "total_orders"
@@ -107,7 +107,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
                 "attribute": {
                     "modelClass": "User",
                     "column": "status",
-                    "type": "string"
+                    "dataType": "string"
                 },
                 "operator": "=",
                 "value": "active"
@@ -121,7 +121,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Electronics"
@@ -131,7 +131,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
                         "attribute": {
                             "modelClass": "Product",
                             "column": "category",
-                            "type": "string"
+                            "dataType": "string"
                         },
                         "operator": "=",
                         "value": "Software"
@@ -149,7 +149,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
                 "attribute": {
                     "modelClass": "Order",
                     "column": "amount",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",
@@ -160,7 +160,7 @@ The LLM invokes the `run_saved_report` tool, passing only the integer ID. The La
                 "attribute": {
                     "modelClass": "Order",
                     "column": "id",
-                    "type": "integer",
+                    "dataType": "integer",
                     "isVirtual": true
                 },
                 "operator": ">",

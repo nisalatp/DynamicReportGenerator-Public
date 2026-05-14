@@ -12,12 +12,12 @@ This example demonstrates how an AI Agent can query the audit log system for com
     "type": "object",
     "properties": {
       "action": { 
-        "type": "string", 
+        "dataType": "string", 
         "description": "Filter by action type.",
         "enum": ["created", "updated", "executed", "assigned", "unassigned", "deleted", "error"]
       },
-      "report_id": { "type": "integer", "description": "Filter by specific saved report ID." },
-      "user_id": { "type": "integer", "description": "Filter by specific user ID." }
+      "report_id": { "dataType": "integer", "description": "Filter by specific saved report ID." },
+      "user_id": { "dataType": "integer", "description": "Filter by specific user ID." }
     }
   }
 }
