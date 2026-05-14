@@ -24,20 +24,20 @@ class ReportBuilderRequest
         $selectedAttributes = collect($payload['selectedAttributes'] ?? [])
             ->filter(fn($attr) => !empty($attr['column']))
             ->map(function ($attr) {
-                return new Attribute($attr['model'], $attr['column'], $attr['type'] ?? 'string', false, null, $attr['alias'] ?? null);
+                return new Attribute($attr['modelClass'], $attr['column'], $attr['type'] ?? 'string', false, null, $attr['alias'] ?? null);
             })->values()->toArray();
 
         $groupBys = collect($payload['groupBys'] ?? [])
-            ->filter(fn($gb) => !empty($gb['column']))
+            ->filter(fn($gb) => isset($gb['attribute']) && !empty($gb['attribute']['column']))
             ->map(function ($gb) {
-                return new GroupBy(new Attribute($gb['model'], $gb['column'], $gb['type'] ?? 'string'));
+                return new GroupBy(new Attribute($gb['attribute']['modelClass'], $gb['attribute']['column'], $gb['attribute']['type'] ?? 'string'));
             })->values()->toArray();
 
         $aggregates = collect($payload['aggregates'] ?? [])
-            ->filter(fn($agg) => !empty($agg['column']))
+            ->filter(fn($agg) => isset($agg['attribute']) && !empty($agg['attribute']['column']))
             ->map(function ($agg) {
                 return new Aggregate(
-                    new Attribute($agg['model'], $agg['column'], $agg['type'] ?? 'string'),
+                    new Attribute($agg['attribute']['modelClass'], $agg['attribute']['column'], $agg['attribute']['type'] ?? 'string'),
                     $agg['function'],
                     $agg['alias'] ?? null
                 );
@@ -45,55 +45,19 @@ class ReportBuilderRequest
 
         $innerFilters = null;
         if (!empty($payload['innerFilters'])) {
-            if (isset($payload['innerFilters']['type'])) {
-                $innerFilters = self::parseFilterNode($payload['innerFilters']);
-            } else {
-                $leaves = collect($payload['innerFilters'])
-                    ->filter(fn($f) => !empty($f['column']))
-                    ->map(function ($f) {
-                        return new FilterLeaf(
-                            new Attribute($f['model'], $f['column'], $f['type'] ?? 'string'),
-                            $f['operator'],
-                            $f['value']
-                        );
-                    })->values()->toArray();
-
-                if (count($leaves) > 1) {
-                    $innerFilters = new FilterGroup('and', $leaves);
-                } elseif (count($leaves) === 1) {
-                    $innerFilters = $leaves[0];
-                }
-            }
+            $innerFilters = self::parseFilterNode($payload['innerFilters']);
         }
 
         $outerFilters = null;
         if (!empty($payload['outerFilters'])) {
-            if (isset($payload['outerFilters']['type'])) {
-                $outerFilters = self::parseFilterNode($payload['outerFilters'], true);
-            } else {
-                $leaves = collect($payload['outerFilters'])
-                    ->filter(fn($f) => !empty($f['column']))
-                    ->map(function ($f) {
-                        return new FilterLeaf(
-                            new Attribute($f['model'] ?? '', $f['column'], $f['type'] ?? 'string', true),
-                            $f['operator'],
-                            $f['value']
-                        );
-                    })->values()->toArray();
-
-                if (count($leaves) > 1) {
-                    $outerFilters = new FilterGroup('and', $leaves);
-                } elseif (count($leaves) === 1) {
-                    $outerFilters = $leaves[0];
-                }
-            }
+            $outerFilters = self::parseFilterNode($payload['outerFilters'], true);
         }
 
         $sorts = collect($payload['sorts'] ?? [])
-            ->filter(fn($sort) => !empty($sort['column']))
+            ->filter(fn($sort) => isset($sort['attribute']) && !empty($sort['attribute']['column']))
             ->map(function ($sort) {
                 return new Sort(
-                    new Attribute($sort['model'], $sort['column'], $sort['type'] ?? 'string'),
+                    new Attribute($sort['attribute']['modelClass'], $sort['attribute']['column'], $sort['attribute']['type'] ?? 'string'),
                     $sort['direction'] ?? 'ASC'
                 );
             })->values()->toArray();
@@ -124,12 +88,12 @@ class ReportBuilderRequest
             return new FilterGroup($node['logic'] ?? 'and', $children);
         }
 
-        if (empty($node['column'])) {
+        if (!isset($node['attribute']) || empty($node['attribute']['column'])) {
             return null;
         }
 
         return new FilterLeaf(
-            new Attribute($node['model'] ?? '', $node['column'], $node['dataType'] ?? 'string', $isOuter),
+            new Attribute($node['attribute']['modelClass'] ?? '', $node['attribute']['column'], $node['attribute']['type'] ?? 'string', $isOuter),
             $node['operator'],
             $node['value'] ?? null
         );
