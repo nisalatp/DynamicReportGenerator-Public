@@ -24,24 +24,26 @@ class ReportBuilderRequest
         $selectedAttributes = collect($payload['selectedAttributes'] ?? [])
             ->filter(fn($attr) => !empty($attr['column']))
             ->map(function ($attr) {
-                return new Attribute($attr['modelClass'], $attr['column'], $attr['type'] ?? 'string', false, null, $attr['alias'] ?? null);
+                return new Attribute($attr['modelClass'] ?? $attr['model'] ?? '', $attr['column'], $attr['type'] ?? 'string', false, null, $attr['alias'] ?? null);
             })->values()->toArray();
 
         $groupBys = collect($payload['groupBys'] ?? [])
-            ->filter(fn($gb) => isset($gb['attribute']) && !empty($gb['attribute']['column']))
             ->map(function ($gb) {
-                return new GroupBy(new Attribute($gb['attribute']['modelClass'], $gb['attribute']['column'], $gb['attribute']['type'] ?? 'string'));
-            })->values()->toArray();
+                $attr = $gb['attribute'] ?? $gb;
+                if (empty($attr['column'])) return null;
+                return new GroupBy(new Attribute($attr['modelClass'] ?? $attr['model'] ?? '', $attr['column'], $attr['type'] ?? 'string'));
+            })->filter()->values()->toArray();
 
         $aggregates = collect($payload['aggregates'] ?? [])
-            ->filter(fn($agg) => isset($agg['attribute']) && !empty($agg['attribute']['column']))
             ->map(function ($agg) {
+                $attr = $agg['attribute'] ?? $agg;
+                if (empty($attr['column'])) return null;
                 return new Aggregate(
-                    new Attribute($agg['attribute']['modelClass'], $agg['attribute']['column'], $agg['attribute']['type'] ?? 'string'),
-                    $agg['function'],
+                    new Attribute($attr['modelClass'] ?? $attr['model'] ?? '', $attr['column'], $attr['type'] ?? 'string'),
+                    $agg['function'] ?? 'SUM',
                     $agg['alias'] ?? null
                 );
-            })->values()->toArray();
+            })->filter()->values()->toArray();
 
         $innerFilters = null;
         if (!empty($payload['innerFilters'])) {
@@ -54,13 +56,14 @@ class ReportBuilderRequest
         }
 
         $sorts = collect($payload['sorts'] ?? [])
-            ->filter(fn($sort) => isset($sort['attribute']) && !empty($sort['attribute']['column']))
             ->map(function ($sort) {
+                $attr = $sort['attribute'] ?? $sort;
+                if (empty($attr['column'])) return null;
                 return new Sort(
-                    new Attribute($sort['attribute']['modelClass'], $sort['attribute']['column'], $sort['attribute']['type'] ?? 'string'),
+                    new Attribute($attr['modelClass'] ?? $attr['model'] ?? '', $attr['column'], $attr['type'] ?? 'string'),
                     $sort['direction'] ?? 'ASC'
                 );
-            })->values()->toArray();
+            })->filter()->values()->toArray();
 
         return new ReportRequest(
             baseModel: $baseModel,
@@ -88,14 +91,15 @@ class ReportBuilderRequest
             return new FilterGroup($node['logic'] ?? 'and', $children);
         }
 
-        if (!isset($node['attribute']) || empty($node['attribute']['column'])) {
+        $attr = $node['attribute'] ?? $node;
+        if (empty($attr['column'])) {
             return null;
         }
 
         return new FilterLeaf(
-            new Attribute($node['attribute']['modelClass'] ?? '', $node['attribute']['column'], $node['attribute']['type'] ?? 'string', $isOuter),
-            $node['operator'],
-            $node['value'] ?? null
+            new Attribute($attr['modelClass'] ?? $attr['model'] ?? '', $attr['column'], $attr['dataType'] ?? $attr['type'] ?? 'string', $attr['isVirtual'] ?? false),
+            $node['operator'] ?? '=',
+            $node['value'] ?? ''
         );
     }
 }

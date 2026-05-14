@@ -198,7 +198,7 @@ trait CompilesQueries
             $innerColName = $getInnerAlias($aggregate->attribute);
 
             $innerColWrapped = $grammar->wrap('inner_query.' . $innerColName);
-            $rawAliasName = $aggregate->alias ?? strtolower($aggregateFunction . '_' . preg_replace('/\s+/', '_', $innerColName));
+            $rawAliasName = !empty($aggregate->alias) ? $aggregate->alias : strtolower($aggregateFunction . '_' . preg_replace('/\s+/', '_', $innerColName));
             $aliasWrapped = $grammar->wrap($rawAliasName);
 
             $selects[] = DB::raw("{$aggregateFunction}({$innerColWrapped}) as {$aliasWrapped}");
@@ -209,7 +209,7 @@ trait CompilesQueries
             $query->groupBy($groupCols);
 
         if ($filters) {
-            $this->applyFilters($query, $filters, [], 'having', 'and', $base);
+            $this->applyFilters($query, $filters, [], 'having', 'and', $base, $innerSelects, $aggs);
         }
 
         return $query;
@@ -221,16 +221,16 @@ trait CompilesQueries
      * Handles FilterGroup (AND/OR nesting) and FilterLeaf (individual conditions)
      * for both WHERE and HAVING clause types.
      */
-    private function applyFilters(Builder $query, FilterNode $node, array $aliases, string $type, string $bool = 'and', ?string $base = null): void
+    private function applyFilters(Builder $query, FilterNode $node, array $aliases, string $type, string $bool = 'and', ?string $base = null, array $innerSelects = [], array $aggs = []): void
     {
         if ($node instanceof FilterGroup) {
             if (empty($node->children)) {
                 return;
             }
             $method = $type === 'where' ? 'where' : 'havingNested';
-            $query->$method(function ($sub) use ($node, $aliases, $type, $base) {
+            $query->$method(function ($sub) use ($node, $aliases, $type, $base, $innerSelects, $aggs) {
                 foreach ($node->children as $child) {
-                    $this->applyFilters($sub, $child, $aliases, $type, $node->logic, $base);
+                    $this->applyFilters($sub, $child, $aliases, $type, $node->logic, $base, $innerSelects, $aggs);
                 }
             }, $type === 'where' ? null : $bool, null, $type === 'where' ? $bool : null);
             return;
@@ -252,9 +252,32 @@ trait CompilesQueries
                         : $node->attribute->column;
                 }
             } else {
-                $col = $type === 'where'
-                    ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column
-                    : $node->attribute->column;
+                if ($type === 'having') {
+                    $col = $node->attribute->column;
+                    $isAggNumeric = false;
+                    foreach ($aggs as $agg) {
+                        $innerAlias = $agg->attribute->column;
+                        foreach ($innerSelects as $selAttr) {
+                            if ($selAttr->modelClass === $agg->attribute->modelClass && $selAttr->column === $agg->attribute->column) {
+                                $innerAlias = $selAttr->alias ?? $selAttr->column;
+                                break;
+                            }
+                        }
+                        
+                        $func = strtoupper($agg->function);
+                        $expectedAlias = !empty($agg->alias) ? $agg->alias : strtolower($func . '_' . preg_replace('/\s+/', '_', $innerAlias));
+                        
+                        if ($innerAlias === $node->attribute->column || $agg->attribute->column === $node->attribute->column || $expectedAlias === $node->attribute->column) {
+                            $col = $expectedAlias;
+                            $isAggNumeric = true;
+                            break;
+                        }
+                    }
+                } else {
+                    $col = $type === 'where'
+                        ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column
+                        : $node->attribute->column;
+                }
             }
 
             $methodMap = [
@@ -266,14 +289,22 @@ trait CompilesQueries
 
             // Cast values strictly according to the attribute definition
             $value = $node->value;
+            $attrType = $node->attribute->type;
+            
+            // Handle numeric casting for aggregate aliases from loosely typed inputs
+            if (($isAggNumeric ?? false) && $attrType === 'string' && is_numeric($value)) {
+                $attrType = 'float';
+            }
+
             if ($value !== null) {
-                switch ($node->attribute->type) {
+                switch ($attrType) {
                     case 'integer':
                         $value = is_array($value) ? array_map('intval', $value) : (int) $value;
                         break;
                     
                     case 'float':
                     case 'double':
+                    case 'number':
                         $value = is_array($value) ? array_map('floatval', $value) : (float) $value;
                         break;
                         
@@ -296,12 +327,17 @@ trait CompilesQueries
                     $colStr = (string) $col;
                     $bindings = array_values((array) $value);
                     $placeholders = implode(',', array_fill(0, count($bindings), '?'));
-                    $query->havingRaw("$colStr in ($placeholders)", $bindings, $bool);
+                    $query->havingRaw($query->getGrammar()->wrap($colStr) . " in ($placeholders)", $bindings, $bool);
                 }
             } elseif ($node->operator === 'between') {
                 $query->{$map['between']}($col, (array) $value, $bool);
             } else {
-                $query->{$map['default']}($col, $node->operator, $value, $bool);
+                if ($type === 'having' && $value !== null && (is_float($value) || is_int($value))) {
+                    // Bypass SQLite PDO string binding quirk where Integer < String is always true
+                    $query->havingRaw($query->getGrammar()->wrap($col) . " {$node->operator} {$value}", [], $bool);
+                } else {
+                    $query->{$map['default']}($col, $node->operator, $value, $bool);
+                }
             }
         }
     }
