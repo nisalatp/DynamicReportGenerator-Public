@@ -72,7 +72,7 @@ Maintains a strict, polymorphic Attribute-Level Security (ALS) firewall embedded
 - **FR 3.6.3 Blocked Attributes (`###`)**: Strictly prohibits use. If detected in `filters`, `aggregations`, or `groupBys`, the engine halts execution and throws a `ReportMakerSecurityException`. Blocked columns are completely excluded from Schema Discovery (`getModelAttributes()`).
 - **FR 3.6.4 Dynamic Model Discovery & Restriction**: Discovers all active Eloquent models automatically and supports explicit whole-model exclusions via the `dynamic_restricted_models` table.
 - **FR 3.6.5 Internal Model Auto-Exclusion**: The engine's own infrastructure models (`SavedReport`, `ReportLog`, `RestrictedModel`, `AttributeRestriction`, `VirtualAttribute`) are automatically excluded from the reportable model list, preventing accidental exposure of audit and security tables. This behavior is configurable via `include_package_models`.
-- **FR 3.6.6 Configurable Model Whitelisting**: When the `reportable_models` config array is populated, it acts as an explicit whitelist. When empty (default), the engine auto-discovers all Eloquent models.
+- **FR 3.6.6 Configurable Model Blacklisting**: When the `excluded_models` config array is populated, it acts as an explicit blacklist, hiding the listed models from the engine. When empty (default), the engine automatically discovers and allows all Eloquent models, providing a "default-allow" experience.
 
 ### 3.7 Schema Discovery
 Exposes the engine's internal knowledge of the data layer to external consumers.

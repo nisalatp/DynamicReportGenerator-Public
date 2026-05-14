@@ -18,7 +18,7 @@ note right
   Checks `allowedModels` which excludes:
   1. Restricted models
   2. Package internal models (unless config allows)
-  3. Models not in `reportable_models` whitelist (if set)
+  3. Models in `excluded_models` blacklist (if set)
 end note
 
 :Resolve Attribute Level Security (ALS)\nfor current subjects;

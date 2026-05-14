@@ -44,7 +44,7 @@
 ### Details
 
 *   **`getAvailableModels`** — Input: none. Output: `array` of allowed model FQCNs (all app models minus restricted minus internal).
-*   **`getAllApplicationModels`** — Input: none. Output: `array` of all discovered Eloquent model FQCNs. If `reportable_models` config is set, uses that whitelist; otherwise auto-discovers via `Finder` + token parsing.
+*   **`getAllApplicationModels`** — Input: none. Output: `array` of all discovered Eloquent model FQCNs. If `excluded_models` config is set, filters out that blacklist; otherwise auto-discovers via `Finder` + token parsing.
 *   **`getModelAttributes`** — Input: `string $modelClass`. Output: `array` of column names (physical + `va:` prefixed virtuals, minus blocked attributes for the current user).
 *   **`getModelRelationships`** — Input: `string $modelClass`. Output: `array` of `ModelLink` objects from the bidirectional graph (includes `direction: forward|reverse`).
 *   **`getConnectedModels`** — Input: `string $modelClass`. Output: `array<string, ModelLink>`. Delegates to `getModelRelationships()`.
@@ -285,7 +285,7 @@
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `reportable_models` | `[]` | Explicit model whitelist (empty = auto-discover) |
+| `excluded_models` | `[]` | Explicit model blacklist (empty = auto-discover) |
 | `include_package_models` | `false` | Include engine's own infrastructure models |
 | `limits.max_rows` | `5000` | OOM protection: max rows per query |
 | `http.enabled` | `false` | Register optional API endpoints |

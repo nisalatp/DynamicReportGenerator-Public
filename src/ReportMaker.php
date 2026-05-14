@@ -100,10 +100,10 @@ class ReportMaker
         $this->validateSecurity($whatUserWants);
         $this->validateFilterDepth($whatUserWants->innerFilters, 'WHERE');
         $this->validateFilterDepth($whatUserWants->outerFilters, 'HAVING');
-        
+
         $targetModels = $whatUserWants->targetModels;
         $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
-        
+
         foreach ($targetModels as $model) {
             $this->ensureModelAllowed($model);
         }
@@ -164,13 +164,13 @@ class ReportMaker
     public function exportToCsv(ReportRequest $whatUserWants, string $filename = 'report.csv', ?array $subjects = null): StreamedResponse
     {
         $query = $this->generate($whatUserWants, $subjects);
-        
+
         return response()->streamDownload(function () use ($query) {
             $handle = fopen('php://output', 'w');
             $headersWritten = false;
 
             foreach ($query->cursor() as $record) {
-                $array = (array)$record;
+                $array = (array) $record;
                 if (!$headersWritten) {
                     fputcsv($handle, array_keys($array));
                     $headersWritten = true;
@@ -207,10 +207,10 @@ class ReportMaker
     public function explainJoinPlan(ReportRequest $whatUserWants): JoinPlan
     {
         $this->ensureModelAllowed($whatUserWants->baseModel);
-        
+
         $targetModels = $whatUserWants->targetModels;
         $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
-        
+
         foreach ($targetModels as $model) {
             $this->ensureModelAllowed($model);
         }
@@ -226,24 +226,24 @@ class ReportMaker
         $this->ensureModelAllowed($request->targetModel);
 
         $links = $this->discoverLinks();
-        
+
         // Find path from Target Model to Base Model using 'va_sub' as alias prefix
         $plan = $this->planJoins($request->targetModel, [$request->baseModel], $links, 'va_sub');
 
         $targetInstance = new $request->targetModel;
-        
+
         $query = \Illuminate\Support\Facades\DB::table($targetInstance->getTable() . ' as va_sub0');
-        
+
         $aliases = [$request->targetModel => 'va_sub0'];
         foreach ($plan->steps as $step) {
             $toInstance = new $step->toModel();
-            
+
             $aliases[$step->fromModel] = $step->localTableAlias;
             $aliases[$step->toModel] = $step->remoteTableAlias;
-            
+
             $first = $step->localTableAlias . '.' . $step->localKey;
             $second = $step->remoteTableAlias . '.' . $step->foreignKey;
-            
+
             if ($step->relationType === 'BelongsTo') {
                 $first = $step->localTableAlias . '.' . $step->foreignKey;
                 $second = $step->remoteTableAlias . '.' . $step->localKey;
@@ -256,7 +256,7 @@ class ReportMaker
         $baseAliasInSubquery = $aliases[$request->baseModel] ?? 'va_sub0';
         $baseInstance = new $request->baseModel;
         $pk = $baseInstance->getKeyName();
-        
+
         // Use whereRaw to bind to the outer query's t0 table
         $query->whereRaw("{$baseAliasInSubquery}.{$pk} = t0.{$pk}");
 
@@ -285,8 +285,8 @@ class ReportMaker
     public function getGeneratedColumns(ReportRequest $whatUserWants): array
     {
         $columns = [];
-        
-        $getInnerAlias = function(Attribute $attr) use ($whatUserWants) {
+
+        $getInnerAlias = function (Attribute $attr) use ($whatUserWants) {
             foreach ($whatUserWants->selectedAttributes as $selAttr) {
                 if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
                     return $selAttr->alias ?? $selAttr->column;
@@ -321,13 +321,14 @@ class ReportMaker
                 }
             }
         }
-        
+
         return $columns;
     }
 
     private function extractVirtualAttributeDependencies(ReportRequest $request, array &$targetModels): void
     {
-        if (!$this->vaRegistry) return;
+        if (!$this->vaRegistry)
+            return;
 
         $baseModel = $request->baseModel;
 
@@ -351,7 +352,8 @@ class ReportMaker
 
     private function extractVAsFromFilter(?FilterNode $node, string $baseModel, array &$targetModels): void
     {
-        if (!$node || !$this->vaRegistry) return;
+        if (!$node || !$this->vaRegistry)
+            return;
 
         if ($node instanceof FilterGroup) {
             foreach ($node->children as $child) {
@@ -388,7 +390,7 @@ class ReportMaker
                 'payload' => json_decode($request->toJson(), true),
                 'user_id' => $userId,
             ]);
-            
+
             $this->logAction($report->id, $userId, 'created');
             return $report;
         } catch (\Throwable $e) {
@@ -406,16 +408,16 @@ class ReportMaker
     {
         try {
             $savedReport = SavedReport::findOrFail($savedReportId);
-            
-            $json = is_string($savedReport->payload) 
-                ? $savedReport->payload 
+
+            $json = is_string($savedReport->payload)
+                ? $savedReport->payload
                 : json_encode($savedReport->payload);
 
             $request = ReportRequest::fromJson($json);
             $builder = $this->generate($request);
-            
+
             $this->logAction($savedReport->id, $executedByUserId, 'executed');
-            
+
             return $builder;
         } catch (\Throwable $e) {
             $this->logAction($savedReportId, $executedByUserId, 'error', ['operation' => 'loadAndGenerate', 'message' => $e->getMessage()]);
@@ -468,8 +470,8 @@ class ReportMaker
     public function loadToEditor(int $reportId): ReportRequest
     {
         $savedReport = SavedReport::findOrFail($reportId);
-        $json = is_string($savedReport->payload) 
-            ? $savedReport->payload 
+        $json = is_string($savedReport->payload)
+            ? $savedReport->payload
             : json_encode($savedReport->payload);
 
         return ReportRequest::fromJson($json);
@@ -560,7 +562,7 @@ class ReportMaker
         // Fallback: auto-discover all Eloquent models in the application.
         $models = [];
         $modelPaths = [app_path(), app_path('Models')];
-        
+
         $finder = new Finder();
         $finder->files()->name('*.php')->in(array_filter($modelPaths, 'is_dir'));
 
@@ -592,7 +594,7 @@ class ReportMaker
         if ($this->restrictedModels !== null) {
             return $this->restrictedModels;
         }
-        
+
         try {
             $this->restrictedModels = RestrictedModel::pluck('model_class')->toArray();
         } catch (\Exception $e) {
@@ -652,7 +654,8 @@ class ReportMaker
         for ($i = 0; $i < $count; $i++) {
             if ($tokens[$i][0] === T_NAMESPACE) {
                 for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === ';') break;
+                    if ($tokens[$j] === ';')
+                        break;
                     if (is_array($tokens[$j]) && in_array($tokens[$j][0], [T_STRING, T_NAME_QUALIFIED])) {
                         $namespace .= $tokens[$j][1];
                     }
@@ -661,7 +664,8 @@ class ReportMaker
 
             if ($tokens[$i][0] === T_CLASS) {
                 for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === '{') break;
+                    if ($tokens[$j] === '{')
+                        break;
                     if (is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
                         $class = $tokens[$j][1];
                         break;
@@ -684,7 +688,7 @@ class ReportMaker
     private function resolveAttributeRestrictions(?array $subjects): void
     {
         $this->resolvedRestrictions = [];
-        
+
         if ($subjects === null && function_exists('auth') && auth()->check()) {
             $user = auth()->user();
             if ($user instanceof DynamicReportSubject) {
@@ -693,18 +697,18 @@ class ReportMaker
                 $subjects = [$user];
             }
         }
-        
+
         if (empty($subjects)) {
             return;
         }
 
         $query = AttributeRestriction::query();
-        $query->where(function($q) use ($subjects) {
+        $query->where(function ($q) use ($subjects) {
             foreach ($subjects as $subject) {
                 if ($subject instanceof Model) {
-                    $q->orWhere(function($sq) use ($subject) {
+                    $q->orWhere(function ($sq) use ($subject) {
                         $sq->where('subject_type', get_class($subject))
-                           ->where('subject_id', $subject->getKey());
+                            ->where('subject_id', $subject->getKey());
                     });
                 }
             }
@@ -749,7 +753,7 @@ class ReportMaker
 
     private function validateSecurity(ReportRequest $req): void
     {
-        $checkBlocked = function(array $attributes, string $context) {
+        $checkBlocked = function (array $attributes, string $context) {
             foreach ($attributes as $attr) {
                 if ($this->getRestrictionType($attr->modelClass, $attr->column, $attr->isVirtual) === 'blocked') {
                     throw new ReportMakerSecurityException("Attribute {$attr->modelClass}.{$attr->column} is BLOCKED and cannot be used in {$context} calculations.");
@@ -821,23 +825,24 @@ class ReportMaker
     {
         $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
-        
+
         $table = $this->allowedModels[$modelClass]->table;
         $physicalCols = Schema::getColumnListing($table);
 
         $virtualCols = [];
         if ($this->vaRegistry) {
             $virtualAttrs = $this->vaRegistry->getForModel($modelClass);
-            $virtualCols = $virtualAttrs->map(function($va) { return 'va:' . $va->name; })->toArray();
+            $virtualCols = $virtualAttrs->map(function ($va) {
+                return 'va:' . $va->name; })->toArray();
         }
 
         $allCols = array_merge($physicalCols, $virtualCols);
-        
+
         // Exclude blocked attributes from schema discovery so they don't even show up in UIs
         // We load restrictions for the current active user here.
-        $this->resolveAttributeRestrictions(null); 
-        
-        return array_values(array_filter($allCols, function($col) use ($modelClass) {
+        $this->resolveAttributeRestrictions(null);
+
+        return array_values(array_filter($allCols, function ($col) use ($modelClass) {
             return $this->getRestrictionType($modelClass, $col, str_starts_with($col, 'va:')) !== 'blocked';
         }));
     }
@@ -852,7 +857,7 @@ class ReportMaker
     {
         $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
-        
+
         $links = $this->discoverLinks();
         return $links[$modelClass] ?? [];
     }
@@ -956,21 +961,28 @@ class ReportMaker
             $instance = new $modelClass();
 
             foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                if ($method->getNumberOfRequiredParameters() > 0 || $method->class !== $modelClass) continue;
+                if ($method->getNumberOfRequiredParameters() > 0 || $method->class !== $modelClass)
+                    continue;
 
                 try {
                     $relation = $method->invoke($instance);
                     if ($relation instanceof Relation) {
                         $type = null;
                         foreach ($supported as $k => $c) {
-                            if ($relation instanceof $c) { $type = $k; break; }
+                            if ($relation instanceof $c) {
+                                $type = $k;
+                                break;
+                            }
                         }
-                        if (!$type) continue;
+                        if (!$type)
+                            continue;
 
                         $toModel = get_class($relation->getRelated());
-                        if (!isset($this->allowedModels[$toModel])) continue;
+                        if (!isset($this->allowedModels[$toModel]))
+                            continue;
 
-                        $foreignKey = ''; $localKey = '';
+                        $foreignKey = '';
+                        $localKey = '';
                         if ($relation instanceof BelongsTo) {
                             $foreignKey = $relation->getForeignKeyName();
                             $localKey = $relation->getOwnerKeyName();
@@ -982,7 +994,8 @@ class ReportMaker
                             $localKey = $relation->getRelatedPivotKeyName();
                         }
 
-                        if (!isset($links[$modelClass])) $links[$modelClass] = [];
+                        if (!isset($links[$modelClass]))
+                            $links[$modelClass] = [];
                         $links[$modelClass][$toModel] = new ModelLink(
                             fromModel: $modelClass,
                             toModel: $toModel,
@@ -993,7 +1006,8 @@ class ReportMaker
                             direction: 'forward',
                         );
                     }
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
         }
         return $links;
@@ -1099,14 +1113,16 @@ class ReportMaker
         $aliasCounter = 1;
 
         foreach ($targets as $target) {
-            if ($base === $target) continue;
+            if ($base === $target)
+                continue;
 
             $path = $this->findShortestPath($base, $target, $links);
-            if (!$path) throw ReportMakerException::noPath($base, $target);
+            if (!$path)
+                throw ReportMakerException::noPath($base, $target);
 
             for ($i = 0; $i < count($path) - 1; $i++) {
                 $from = $path[$i];
-                $to = $path[$i+1];
+                $to = $path[$i + 1];
                 $link = $links[$from][$to];
 
                 // Propagate the link's direction (forward/reverse) into the JoinStep
@@ -1158,7 +1174,8 @@ class ReportMaker
             $path = array_shift($queue);
             $current = end($path);
 
-            if ($current === $end) return $path;
+            if ($current === $end)
+                return $path;
 
             // Iterate all neighbors — this now includes both forward-declared
             // and reverse-synthesized edges, enabling bidirectional traversal.
@@ -1180,12 +1197,12 @@ class ReportMaker
     {
         $baseInstance = new $base();
         $query = DB::table($baseInstance->getTable() . ' as t0');
-        
+
         foreach ($plan->steps as $step) {
             $toInstance = new $step->toModel();
             $first = $step->localTableAlias . '.' . $step->localKey;
             $second = $step->remoteTableAlias . '.' . $step->foreignKey;
-            
+
             if ($step->relationType === 'BelongsTo') {
                 $first = $step->localTableAlias . '.' . $step->foreignKey;
                 $second = $step->remoteTableAlias . '.' . $step->localKey;
@@ -1203,7 +1220,7 @@ class ReportMaker
         foreach ($selects as $attr) {
             $isVirtual = $attr->isVirtual || str_starts_with($attr->column, 'va:');
             $finalAlias = $attr->alias ?? $attr->column;
-            
+
             $restriction = $this->getRestrictionType($attr->modelClass, $attr->column, $isVirtual);
             if ($restriction === 'blocked') {
                 $selectColumns[] = DB::raw("'###' as " . $query->getGrammar()->wrap($finalAlias));
@@ -1244,7 +1261,7 @@ class ReportMaker
         $selects = [];
         $groupCols = [];
 
-        $getInnerAlias = function(Attribute $attr) use ($innerSelects) {
+        $getInnerAlias = function (Attribute $attr) use ($innerSelects) {
             foreach ($innerSelects as $selAttr) {
                 if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
                     return $selAttr->alias ?? $selAttr->column;
@@ -1265,16 +1282,17 @@ class ReportMaker
         foreach ($aggs as $a) {
             $func = strtoupper($a->function);
             $innerColName = $getInnerAlias($a->attribute);
-            
+
             $innerColWrapped = $grammar->wrap('inner_query.' . $innerColName);
             $rawAliasName = $a->alias ?? strtolower($func . '_' . preg_replace('/\s+/', '_', $innerColName));
             $aliasWrapped = $grammar->wrap($rawAliasName);
-            
+
             $selects[] = DB::raw("{$func}({$innerColWrapped}) as {$aliasWrapped}");
         }
 
         $query->select(empty($selects) ? ['inner_query.*'] : $selects);
-        if (!empty($groupCols)) $query->groupBy($groupCols);
+        if (!empty($groupCols))
+            $query->groupBy($groupCols);
 
         if ($filters) {
             $this->applyFilters($query, $filters, [], 'having', 'and', $base);
@@ -1300,7 +1318,7 @@ class ReportMaker
 
         if ($node instanceof FilterLeaf) {
             $isVirtual = $node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:');
-            
+
             if ($isVirtual && $this->vaRegistry && $base) {
                 $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
                 $va = $this->vaRegistry->findByName($node->attribute->modelClass, $name);
@@ -1309,13 +1327,13 @@ class ReportMaker
                     $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
                     $col = DB::raw($fragment);
                 } else {
-                    $col = $type === 'where' 
-                        ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
+                    $col = $type === 'where'
+                        ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column
                         : $node->attribute->column;
                 }
             } else {
-                $col = $type === 'where' 
-                    ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column 
+                $col = $type === 'where'
+                    ? ($aliases[$node->attribute->modelClass] ?? 't0') . '.' . $node->attribute->column
                     : $node->attribute->column;
             }
 
@@ -1333,8 +1351,8 @@ class ReportMaker
                 } elseif ($node->attribute->type === 'float' || $node->attribute->type === 'double') {
                     $value = is_array($value) ? array_map('floatval', $value) : (float) $value;
                 } elseif ($node->attribute->type === 'boolean') {
-                    $value = is_array($value) 
-                        ? array_map(fn($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN), $value) 
+                    $value = is_array($value)
+                        ? array_map(fn($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN), $value)
                         : filter_var($value, FILTER_VALIDATE_BOOLEAN);
                 }
             }
@@ -1344,7 +1362,8 @@ class ReportMaker
             } elseif ($node->operator === 'is not null') {
                 $query->{$map['notnull']}($col, $bool);
             } elseif ($node->operator === 'in') {
-                if ($type === 'where') $query->{$map['in']}($col, $value, $bool);
+                if ($type === 'where')
+                    $query->{$map['in']}($col, $value, $bool);
                 else {
                     $colStr = (string) $col;
                     $bindings = array_values((array) $value);
@@ -1352,7 +1371,7 @@ class ReportMaker
                     $query->havingRaw("$colStr in ($placeholders)", $bindings, $bool);
                 }
             } elseif ($node->operator === 'between') {
-                $query->{$map['between']}($col, (array)$value, $bool);
+                $query->{$map['between']}($col, (array) $value, $bool);
             } else {
                 $query->{$map['default']}($col, $node->operator, $value, $bool);
             }

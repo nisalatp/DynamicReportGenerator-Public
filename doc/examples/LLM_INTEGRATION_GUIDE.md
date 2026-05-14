@@ -43,10 +43,9 @@ Edit `config/dynamicreportgenerator.php`:
 
 ```php
 return [
-    // Whitelist models (empty = auto-discover all Eloquent models)
-    'reportable_models' => [
-        // App\Models\User::class,
-        // App\Models\Order::class,
+    // Blacklist models (empty = auto-discover all Eloquent models)
+    'excluded_models' => [
+        // App\Models\SecretSystemModel::class,
     ],
     'include_package_models' => false,
     'limits' => ['max_rows' => 5000],
