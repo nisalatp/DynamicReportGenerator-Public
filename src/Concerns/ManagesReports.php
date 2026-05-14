@@ -35,6 +35,7 @@ trait ManagesReports
     public function saveReport(string $name, ReportRequest $request, ?int $userId = null, string $description = ''): SavedReport
     {
         try {
+            // 1. Act: Save Report
             $report = SavedReport::create([
                 'name' => $name,
                 'description' => $description,
@@ -42,10 +43,16 @@ trait ManagesReports
                 'user_id' => $userId,
             ]);
 
+            // 2. Log Action
             $this->logAction($report->id, $userId, 'created');
+            
             return $report;
+            
         } catch (\Throwable $e) {
-            $this->logAction(null, $userId, 'error', ['operation' => 'saveReport', 'message' => $e->getMessage()]);
+            $this->logAction(null, $userId, 'error', [
+                'operation' => 'saveReport', 
+                'message' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
@@ -64,20 +71,27 @@ trait ManagesReports
     public function loadAndGenerate(int $savedReportId, ?int $executedByUserId = null): Builder
     {
         try {
+            // 1. Arrange: Fetch and deserialize
             $savedReport = SavedReport::findOrFail($savedReportId);
 
             $json = is_string($savedReport->payload)
                 ? $savedReport->payload
                 : json_encode($savedReport->payload);
 
+            // 2. Act: Generate query via Engine
             $request = ReportRequest::fromJson($json);
             $builder = $this->generate($request);
 
+            // 3. Log Action
             $this->logAction($savedReport->id, $executedByUserId, 'executed');
 
             return $builder;
+            
         } catch (\Throwable $e) {
-            $this->logAction($savedReportId, $executedByUserId, 'error', ['operation' => 'loadAndGenerate', 'message' => $e->getMessage()]);
+            $this->logAction($savedReportId, $executedByUserId, 'error', [
+                'operation' => 'loadAndGenerate', 
+                'message' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
@@ -175,13 +189,20 @@ trait ManagesReports
     public function deleteReport(int $reportId, ?int $actionByUserId = null): void
     {
         try {
+            // 1. Act: Delete Report
             $report = SavedReport::findOrFail($reportId);
             $report->delete();
+            
+            // 2. Log Action
             // Since report is deleted, saved_report_id in logs will become null due to "set null" constraint,
             // but we can still insert a log indicating the action.
             $this->logAction(null, $actionByUserId ?? $report->user_id, 'deleted', ['deleted_report_id' => $reportId]);
+            
         } catch (\Throwable $e) {
-            $this->logAction($reportId, $actionByUserId, 'error', ['operation' => 'deleteReport', 'message' => $e->getMessage()]);
+            $this->logAction($reportId, $actionByUserId, 'error', [
+                'operation' => 'deleteReport', 
+                'message' => $e->getMessage()
+            ]);
             throw $e;
         }
     }

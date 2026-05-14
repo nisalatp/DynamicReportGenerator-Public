@@ -14,7 +14,7 @@ This example demonstrates how to build a dynamic schema explorer in Vue 3. It qu
       <label>Select Base Model:</label>
       <select v-model="selectedModel" @change="fetchSchemaDetails">
         <option value="">-- Choose a Model --</option>
-        <option v-for="model in availableModels" :key="model" :value="model">
+        <option v-for="model in availableModels" :key="modelClass":value="model">
           {{ model }}
         </option>
       </select>

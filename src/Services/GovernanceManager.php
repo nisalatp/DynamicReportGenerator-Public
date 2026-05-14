@@ -40,14 +40,14 @@ class GovernanceManager
         }
 
         $matrix = [];
-        foreach ($attributes as $attrName) {
-            if ($attrName === '*') continue;
+        foreach ($attributes as $attributeName) {
+            if ($attributeName === '*') continue;
 
-            $type = str_starts_with($attrName, 'va:') ? 'virtual' : 'physical';
-            $restriction = $restrictions->where('attribute', $attrName)->first();
+            $type = str_starts_with($attributeName, 'va:') ? 'virtual' : 'physical';
+            $restriction = $restrictions->where('attribute', $attributeName)->first();
             
             $matrix[] = [
-                'name' => $attrName,
+                'name' => $attributeName,
                 'type' => $type,
                 'restriction' => $restriction ? $restriction->restriction_type : 'unrestricted'
             ];
@@ -65,8 +65,10 @@ class GovernanceManager
     public static function saveMatrix(string $modelClass, string $subjectClass, int $subjectId, bool $isReportable, array $attributes, int $authId): void
     {
         DB::beginTransaction();
+        
         try {
-            // Handle Model Reportability
+            // 1. Handle Model-Level Reportability
+            // If a model is not reportable, we insert a wildcard '*' restriction.
             if (!$isReportable) {
                 AttributeRestriction::updateOrCreate(
                     [
@@ -81,6 +83,7 @@ class GovernanceManager
                     ]
                 );
             } else {
+                // Remove the wildcard restriction if it exists
                 AttributeRestriction::where([
                     'model_class' => $modelClass,
                     'attribute' => '*',
@@ -89,20 +92,23 @@ class GovernanceManager
                 ])->delete();
             }
 
-            // Handle Attributes
-            foreach ($attributes as $attrName => $restrictionType) {
+            // 2. Process Individual Attribute Rules
+            foreach ($attributes as $attributeName => $restrictionType) {
+                
+                // If unrestricted, ensure no restriction record exists in the database
                 if ($restrictionType === 'unrestricted') {
                     AttributeRestriction::where([
                         'model_class' => $modelClass,
-                        'attribute' => $attrName,
+                        'attribute' => $attributeName,
                         'subject_type' => $subjectClass,
                         'subject_id' => $subjectId
                     ])->delete();
                 } else {
+                    // Otherwise, upsert the restriction (masked or blocked)
                     AttributeRestriction::updateOrCreate(
                         [
                             'model_class' => $modelClass,
-                            'attribute' => $attrName,
+                            'attribute' => $attributeName,
                             'subject_type' => $subjectClass,
                             'subject_id' => $subjectId
                         ],
@@ -113,7 +119,9 @@ class GovernanceManager
                     );
                 }
             }
+
             DB::commit();
+            
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;

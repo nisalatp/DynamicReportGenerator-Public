@@ -53,21 +53,21 @@ String payload = """
     "baseModel": "User",
     "targetModels": ["Order"],
     "selectedAttributes": [
-        { "model": "User", "column": "name", "type": "string" },
-        { "model": "User", "column": "country", "type": "string" }
+        { "modelClass": "User", "column": "name", "type": "string" },
+        { "modelClass": "User", "column": "country", "type": "string" }
     ],
     "groupBys": [
-        { "attribute": { "model": "User", "column": "country", "type": "string" } }
+        { "attribute": { "modelClass": "User", "column": "country", "type": "string" } }
     ],
     "aggregates": [
         {
-            "attribute": { "model": "Order", "column": "amount", "type": "integer" },
+            "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
             "function": "SUM",
             "alias": "total_revenue"
         }
     ],
     "sorts": [
-        { "attribute": { "model": "Order", "column": "total_revenue", "isVirtual": true }, "direction": "DESC" }
+        { "attribute": { "modelClass": "Order", "column": "total_revenue", "isVirtual": true }, "direction": "DESC" }
     ]
 }
 """;

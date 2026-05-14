@@ -4,6 +4,12 @@ namespace Nisalatp\DynamicReportGenerator\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Saved Report Model.
+ *
+ * Eloquent model responsible for persisting a generated report's AST payload
+ * to the database. Acts as the anchor point for Report Ownership and assignment.
+ */
 class SavedReport extends Model
 {
     protected $table = 'dynamic_saved_reports';

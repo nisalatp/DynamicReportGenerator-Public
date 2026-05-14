@@ -20,7 +20,7 @@
 
 ### Details
 
-*   **`generate`** — Input: `ReportRequest $whatUserWants`, `?array $subjects`. Output: `Builder`. Enforces model-level and attribute-level security, validates filter depth, resolves VA dependencies, builds BFS join plan, constructs inner query with optional outer query for GROUP BY/aggregates, applies sorts, and enforces `max_rows` safety limit.
+*   **`generate`** — Input: `ReportRequest $request`, `?array $subjects`. Output: `Builder`. Enforces model-level and attribute-level security, validates filter depth, resolves VA dependencies, builds BFS join plan, constructs inner query with optional outer query for GROUP BY/aggregates, applies sorts, and enforces `max_rows` safety limit.
 *   **`generatePaginated`** — Input: `ReportRequest`, `int $perPage = 50`, `?array $subjects`. Output: `LengthAwarePaginator`. Wraps `generate()` with `->paginate()`.
 *   **`exportToCsv`** — Input: `ReportRequest`, `string $filename = 'report.csv'`, `?array $subjects`. Output: `StreamedResponse`. Uses `cursor()` for O(1) memory-safe streaming.
 *   **`toRawSql`** — Input: `Builder $query`. Output: `string`. Replaces `?` placeholders with actual bindings.

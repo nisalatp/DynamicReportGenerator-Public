@@ -14,7 +14,7 @@ If an Admin does not want to write raw SQL, they use the visual dropdowns. The f
 const payload = {
     baseModel: 'User',
     ast: [
-        { model: 'Order', name: 'total_amount', aggregateFunction: 'SUM' }
+        { modelClass: 'Order', name: 'total_amount', aggregateFunction: 'SUM' }
     ],
     builderMode: 'visual'
 };

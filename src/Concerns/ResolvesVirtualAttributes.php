@@ -27,12 +27,22 @@ trait ResolvesVirtualAttributes
         $baseModel = $request->baseModel;
 
         foreach ($request->selectedAttributes as $attr) {
-            if ($attr->isVirtual || str_starts_with($attr->column, 'va:')) {
-                $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
-                $va = $this->vaRegistry->findByName($attr->modelClass, $name);
-                if ($va && is_array($va->dependencies)) {
-                    $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
-                    $targetModels = array_merge($targetModels, $validDeps);
+            $isVirtualCol = $attr->isVirtual || str_starts_with($attr->column, 'va:');
+            
+            if ($isVirtualCol) {
+                $virtualName = str_starts_with($attr->column, 'va:') 
+                    ? substr($attr->column, 3) 
+                    : $attr->column;
+                    
+                $virtualAttribute = $this->vaRegistry->findByName($attr->modelClass, $virtualName);
+                
+                if ($virtualAttribute && is_array($virtualAttribute->dependencies)) {
+                    $validDependencies = array_filter(
+                        $virtualAttribute->dependencies, 
+                        fn($dependency) => is_string($dependency) && $dependency !== '_ast'
+                    );
+                    
+                    $targetModels = array_merge($targetModels, $validDependencies);
                 }
             }
         }
@@ -57,12 +67,23 @@ trait ResolvesVirtualAttributes
                 $this->extractVAsFromFilter($child, $baseModel, $targetModels);
             }
         } elseif ($node instanceof FilterLeaf) {
-            if ($node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:')) {
-                $name = str_starts_with($node->attribute->column, 'va:') ? substr($node->attribute->column, 3) : $node->attribute->column;
-                $va = $this->vaRegistry->findByName($node->attribute->modelClass, $name);
-                if ($va && is_array($va->dependencies)) {
-                    $validDeps = array_filter($va->dependencies, fn($d) => is_string($d) && $d !== '_ast');
-                    $targetModels = array_merge($targetModels, $validDeps);
+            
+            $isVirtualCol = $node->attribute->isVirtual || str_starts_with($node->attribute->column, 'va:');
+            
+            if ($isVirtualCol) {
+                $virtualName = str_starts_with($node->attribute->column, 'va:') 
+                    ? substr($node->attribute->column, 3) 
+                    : $node->attribute->column;
+                    
+                $virtualAttribute = $this->vaRegistry->findByName($node->attribute->modelClass, $virtualName);
+                
+                if ($virtualAttribute && is_array($virtualAttribute->dependencies)) {
+                    $validDependencies = array_filter(
+                        $virtualAttribute->dependencies, 
+                        fn($dependency) => is_string($dependency) && $dependency !== '_ast'
+                    );
+                    
+                    $targetModels = array_merge($targetModels, $validDependencies);
                 }
             }
         }

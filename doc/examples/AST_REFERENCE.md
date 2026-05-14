@@ -43,7 +43,7 @@ The `Attribute` object is heavily used across `selectedAttributes`, `groupBys`, 
 
 ```json
 {
-  "model": "User",
+  "modelClass": "User",
   "column": "email",
   "type": "string",
   "isVirtual": false,
@@ -71,8 +71,8 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ### `GroupBy` Example (Multiple Groupings)
 ```json
 "groupBys": [
-  { "model": "User", "column": "country", "type": "string" },
-  { "model": "Product", "column": "category", "type": "string", "alias": "product_category" }
+  { "modelClass": "User", "column": "country", "type": "string" },
+  { "modelClass": "Product", "column": "category", "type": "string", "alias": "product_category" }
 ]
 ```
 
@@ -80,12 +80,12 @@ When grouping data, you specify an array of `GroupBy` objects and an array of `A
 ```json
 "aggregates": [
   {
-    "model": "Order", "column": "amount", "type": "integer",
+    "modelClass": "Order", "column": "amount", "type": "integer",
     "function": "SUM",
     "alias": "total_revenue"
   },
   {
-    "model": "Order", "column": "id", "type": "integer",
+    "modelClass": "Order", "column": "id", "type": "integer",
     "function": "COUNT",
     "alias": "total_orders"
   }
@@ -102,7 +102,7 @@ When ordering data, you specify an array of `Sort` objects. You can sort by phys
 ```json
 "sorts": [
   {
-    "model": "Order", "column": "total_revenue", "isVirtual": true,
+    "modelClass": "Order", "column": "total_revenue", "isVirtual": true,
     "direction": "DESC"
   }
 ]
@@ -127,9 +127,11 @@ A single condition. It **must** contain a `type: "leaf"` flag.
 ```json
 {
   "type": "leaf",
-  "model": "User",
-  "column": "status",
-  "type": "string",
+  "attribute": {
+    "modelClass": "User",
+    "column": "status",
+    "type": "string"
+  },
   "operator": ">",
   "value": 1000
 }
@@ -209,61 +211,105 @@ This payload demonstrates joins (`targetModels`), grouping, aggregation, Virtual
 
 ```json
 {
-  "baseModel": "User",
-  "targetModels": ["Order"],
-  "selectedAttributes": [
-    { "model": "User", "column": "lifetime_spend", "type": "integer", "isVirtual": true }
-  ],
-  "groupBys": [
-    { "model": "User", "column": "country", "type": "string" }
-  ],
-  "aggregates": [
-    { 
-      "model": "Order", "column": "amount", "type": "integer",
-      "function": "SUM",
-      "alias": "total_revenue"
-    },
-    { 
-      "model": "Order", "column": "id", "type": "integer",
-      "function": "COUNT",
-      "alias": "total_orders"
-    }
-  ],
-  "innerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
-      {
-        "type": "leaf",
-        "model": "User", "column": "status", "dataType": "string",
-        "operator": "=",
-        "value": "active"
-      }
-    ]
-  },
-  "outerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
+    "baseModel": "User",
+    "targetModels": [
+        "Order"
+    ],
+    "selectedAttributes": [
         {
-            "type": "leaf",
-            "model": "Order", "column": "amount", "dataType": "integer", "isVirtual": true,
-            "operator": ">",
-            "value": 10000
+            "modelClass": "Order",
+            "column": "total_revenue",
+            "isVirtual": true,
+            "direction": "DESC"
+        }
+    ],
+    "groupBys": [
+        {
+            "attribute": {
+                "modelClass": "User",
+                "column": "country",
+                "type": "string"
+            }
+        }
+    ],
+    "aggregates": [
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "amount",
+                "type": "integer",
+                "function": "SUM",
+                "alias": "total_revenue"
+            },
+            "function": "SUM",
+            "alias": "total_revenue"
         },
         {
-            "type": "leaf",
-            "model": "Order", "column": "id", "dataType": "integer", "isVirtual": true,
-            "operator": ">",
-            "value": 5
+            "attribute": {
+                "modelClass": "Order",
+                "column": "id",
+                "type": "integer",
+                "function": "COUNT",
+                "alias": "total_orders"
+            },
+            "function": "COUNT",
+            "alias": "total_orders"
+        }
+    ],
+    "innerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "leaf",
+                "attribute": {
+                    "modelClass": "User",
+                    "column": "status",
+                    "type": "string"
+                },
+                "operator": "=",
+                "value": "active"
+            }
+        ]
+    },
+    "outerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "leaf",
+                "attribute": {
+                    "modelClass": "Order",
+                    "column": "amount",
+                    "type": "integer",
+                    "isVirtual": true
+                },
+                "operator": ">",
+                "value": 10000
+            },
+            {
+                "type": "leaf",
+                "attribute": {
+                    "modelClass": "Order",
+                    "column": "id",
+                    "type": "integer",
+                    "isVirtual": true
+                },
+                "operator": ">",
+                "value": 5
+            }
+        ]
+    },
+    "sorts": [
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "total_revenue",
+                "isVirtual": true,
+                "direction": "DESC"
+            },
+            "direction": "DESC"
         }
     ]
-  },
-  "sorts": [
-    {
-        "model": "Order", "column": "total_revenue", "isVirtual": true,
-        "direction": "DESC"
-    }
-  ]
 }
 ```

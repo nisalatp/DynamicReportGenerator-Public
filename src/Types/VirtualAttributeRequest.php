@@ -2,6 +2,13 @@
 
 namespace Nisalatp\DynamicReportGenerator\Types;
 
+/**
+ * Virtual Attribute Request.
+ *
+ * Represents the configuration DTO for an actively executing Virtual Attribute.
+ * Used internally by the engine when compiling the embedded query fragments
+ * for Virtual Attributes that have their own internal sub-filters.
+ */
 readonly class VirtualAttributeRequest
 {
     public function __construct(
@@ -38,12 +45,19 @@ readonly class VirtualAttributeRequest
     private static function parseFilterNode(array $node): ?FilterNode
     {
         if (($node['type'] ?? '') === 'group') {
+            // Recursively parse children, filtering out any invalid nodes
             $children = collect($node['children'] ?? [])
-                ->map(fn($child) => self::parseFilterNode($child))
+                ->map(function ($child) {
+                    return self::parseFilterNode($child);
+                })
                 ->filter()
                 ->values()
                 ->toArray();
-            if (empty($children)) return null;
+                
+            if (empty($children)) {
+                return null;
+            }
+            
             return new FilterGroup($node['logic'] ?? 'and', $children);
         }
 

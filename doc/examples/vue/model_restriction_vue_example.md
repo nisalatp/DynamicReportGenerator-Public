@@ -15,7 +15,7 @@ This example demonstrates how an administrator can restrict entire models from b
         <tr><th>Model</th><th>Status</th><th>Action</th></tr>
       </thead>
       <tbody>
-        <tr v-for="model in allModels" :key="model" :class="{ restricted: isRestricted(model) }">
+        <tr v-for="model in allModels" :key="modelClass":class="{ restricted: isRestricted(model) }">
           <td>{{ model }}</td>
           <td>
             <span v-if="isRestricted(model)" class="badge danger">Restricted</span>

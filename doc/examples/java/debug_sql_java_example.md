@@ -52,13 +52,13 @@ String payload = """
     "baseModel": "User",
     "targetModels": ["Order"],
     "selectedAttributes": [
-        { "model": "User", "column": "name", "type": "string" }
+        { "modelClass": "User", "column": "name", "type": "string" }
     ],
     "aggregates": [
-        { "attribute": { "model": "Order", "column": "amount", "type": "integer" }, "function": "SUM", "alias": "total_revenue" }
+        { "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" }, "function": "SUM", "alias": "total_revenue" }
     ],
     "groupBys": [
-        { "attribute": { "model": "User", "column": "country", "type": "string" } }
+        { "attribute": { "modelClass": "User", "column": "country", "type": "string" } }
     ]
 }
 """;

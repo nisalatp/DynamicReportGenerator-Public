@@ -53,7 +53,7 @@ const message = ref('');
 
 const form = reactive({
   name: '',
-  base_model: 'Order',
+  base_modelClass: 'Order',
   return_type: 'integer',
   sql_fragment: ''
 });
@@ -93,72 +93,117 @@ The admin uses the UI above to register the two VAs. Once registered, the user c
 
 ```json
 {
-  "baseModel": "User",
-  "targetModels": ["Order", "Product"],
-  "selectedAttributes": [],
-  "groupBys": [
-    { "attribute": { "model": "User", "column": "country", "type": "string" } },
-    { "attribute": { "model": "Product", "column": "category", "type": "string" } }
-  ],
-  "aggregates": [
-    { 
-      "attribute": { "model": "Order", "column": "amount", "type": "integer" },
-      "function": "SUM",
-      "alias": "total_revenue"
-    },
-    { 
-      "attribute": { "model": "Order", "column": "id", "type": "integer" },
-      "function": "COUNT",
-      "alias": "total_orders"
-    }
-  ],
-  "innerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
-      {
-        "type": "leaf",
-        "attribute": { "model": "User", "column": "status", "type": "string" },
-        "operator": "=",
-        "value": "active"
-      },
-      {
+    "baseModel": "User",
+    "targetModels": [
+        "Order",
+        "Product"
+    ],
+    "selectedAttributes": [],
+    "groupBys": [
+        {
+            "attribute": {
+                "modelClass": "User",
+                "column": "country",
+                "type": "string"
+            }
+        },
+        {
+            "attribute": {
+                "modelClass": "Product",
+                "column": "category",
+                "type": "string"
+            }
+        }
+    ],
+    "aggregates": [
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "amount",
+                "type": "integer"
+            },
+            "function": "SUM",
+            "alias": "total_revenue"
+        },
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "id",
+                "type": "integer"
+            },
+            "function": "COUNT",
+            "alias": "total_orders"
+        }
+    ],
+    "innerFilters": {
         "type": "group",
-        "logic": "or",
+        "logic": "and",
         "children": [
             {
                 "type": "leaf",
-                "attribute": { "model": "Product", "column": "category", "type": "string" },
+                "attribute": {
+                    "modelClass": "User",
+                    "column": "status",
+                    "type": "string"
+                },
                 "operator": "=",
-                "value": "Electronics"
+                "value": "active"
+            },
+            {
+                "type": "group",
+                "logic": "or",
+                "children": [
+                    {
+                        "type": "leaf",
+                        "attribute": {
+                            "modelClass": "Product",
+                            "column": "category",
+                            "type": "string"
+                        },
+                        "operator": "=",
+                        "value": "Electronics"
+                    },
+                    {
+                        "type": "leaf",
+                        "attribute": {
+                            "modelClass": "Product",
+                            "column": "category",
+                            "type": "string"
+                        },
+                        "operator": "=",
+                        "value": "Software"
+                    }
+                ]
+            }
+        ]
+    },
+    "outerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "leaf",
+                "attribute": {
+                    "modelClass": "Order",
+                    "column": "amount",
+                    "type": "integer",
+                    "isVirtual": true
+                },
+                "operator": ">",
+                "value": 10000
             },
             {
                 "type": "leaf",
-                "attribute": { "model": "Product", "column": "category", "type": "string" },
-                "operator": "=",
-                "value": "Software"
+                "attribute": {
+                    "modelClass": "Order",
+                    "column": "id",
+                    "type": "integer",
+                    "isVirtual": true
+                },
+                "operator": ">",
+                "value": 5
             }
         ]
-      }
-    ]
-  },
-  "outerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
-        {
-            "type": "leaf",
-            "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
-            "operator": ">",
-            "value": 10000
-        },
-        {
-            "type": "leaf",
-            "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
-            "operator": ">",
-            "value": 5
-        }
-    ]
-  }
+    }
 }
 ```

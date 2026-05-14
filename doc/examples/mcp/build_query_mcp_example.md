@@ -23,7 +23,7 @@ You define an MCP Tool that the AI can call. The schema matches the `ReportReque
         "items": {
           "type": "object",
           "properties": {
-            "model": { "type": "string" },
+            "modelClass": { "type": "string" },
             "column": { "type": "string" },
             "type": { "type": "string" },
             "alias": { "type": "string", "description": "Crucial to prevent column collisions when joining multiple tables (e.g. User.name and Product.name)" }
@@ -90,83 +90,142 @@ The LLM parses this highly complex intent. It knows the schema. It natively gene
 
 ```json
 {
-  "baseModel": "User",
-  "targetModels": ["Order", "Product"],
-  "selectedAttributes": [
-    { "model": "User", "column": "country", "type": "string" },
-    { "model": "Product", "column": "category", "type": "string", "alias": "product_category" },
-    { "model": "Order", "column": "amount", "type": "integer" },
-    { "model": "Order", "column": "id", "type": "integer" }
-  ],
-  "groupBys": [
-    { "model": "User", "column": "country", "type": "string" },
-    { "model": "Product", "column": "category", "type": "string", "alias": "product_category" }
-  ],
-  "aggregates": [
-    { 
-      "model": "Order", "column": "amount", "type": "integer",
-      "function": "SUM",
-      "alias": "total_revenue"
-    },
-    { 
-      "model": "Order", "column": "id", "type": "integer",
-      "function": "COUNT",
-      "alias": "total_orders"
-    }
-  ],
-  "innerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
-      {
-        "type": "leaf",
-        "model": "User", "column": "status", "type": "string",
-        "operator": "=",
-        "value": "active"
-      },
-      {
-        "type": "group",
-        "logic": "or",
-        "children": [
-            {
-                "type": "leaf",
-                "model": "Product", "column": "category", "type": "string",
-                "operator": "=",
-                "value": "Electronics"
-            },
-            {
-                "type": "leaf",
-                "model": "Product", "column": "category", "type": "string",
-                "operator": "=",
-                "value": "Software"
-            }
-        ]
-      }
-    ]
-  },
-  "outerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
+    "baseModel": "User",
+    "targetModels": [
+        "Order",
+        "Product"
+    ],
+    "selectedAttributes": [
         {
-            "type": "leaf",
-            "model": "Order", "column": "amount", "type": "integer", "isVirtual": true,
-            "operator": ">",
-            "value": 10000
+            "modelClass": "User",
+            "column": "country",
+            "type": "string"
         },
         {
-            "type": "leaf",
-            "model": "Order", "column": "id", "type": "integer", "isVirtual": true,
-            "operator": ">",
-            "value": 5
+            "modelClass": "Product",
+            "column": "category",
+            "type": "string",
+            "alias": "product_category"
+        },
+        {
+            "modelClass": "Order",
+            "column": "amount",
+            "type": "integer"
+        },
+        {
+            "modelClass": "Order",
+            "column": "total_revenue",
+            "isVirtual": true,
+            "direction": "DESC"
+        }
+    ],
+    "groupBys": [
+        {
+            "attribute": {
+                "modelClass": "User",
+                "column": "country",
+                "type": "string"
+            }
+        },
+        {
+            "attribute": {
+                "modelClass": "Product",
+                "column": "category",
+                "type": "string",
+                "alias": "product_category"
+            },
+            "alias": "product_category"
+        }
+    ],
+    "aggregates": [
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "amount",
+                "type": "integer",
+                "function": "SUM",
+                "alias": "total_revenue"
+            },
+            "function": "SUM",
+            "alias": "total_revenue"
+        },
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "id",
+                "type": "integer",
+                "function": "COUNT",
+                "alias": "total_orders"
+            },
+            "function": "COUNT",
+            "alias": "total_orders"
+        }
+    ],
+    "innerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "string",
+                "modelClass": "User",
+                "column": "status",
+                "operator": "=",
+                "value": "active"
+            },
+            {
+                "type": "group",
+                "logic": "or",
+                "children": [
+                    {
+                        "type": "string",
+                        "modelClass": "Product",
+                        "column": "category",
+                        "operator": "=",
+                        "value": "Electronics"
+                    },
+                    {
+                        "type": "string",
+                        "modelClass": "Product",
+                        "column": "category",
+                        "operator": "=",
+                        "value": "Software"
+                    }
+                ]
+            }
+        ]
+    },
+    "outerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "integer",
+                "modelClass": "Order",
+                "column": "amount",
+                "isVirtual": true,
+                "operator": ">",
+                "value": 10000
+            },
+            {
+                "type": "integer",
+                "modelClass": "Order",
+                "column": "id",
+                "isVirtual": true,
+                "operator": ">",
+                "value": 5
+            }
+        ]
+    },
+    "sorts": [
+        {
+            "attribute": {
+                "modelClass": "Order",
+                "column": "total_revenue",
+                "isVirtual": true,
+                "direction": "DESC"
+            },
+            "direction": "DESC"
         }
     ]
-  },
-  "sorts": [
-    {
-        "model": "Order", "column": "total_revenue", "isVirtual": true,
-        "direction": "DESC"
-    }
-  ]
 }
 ```

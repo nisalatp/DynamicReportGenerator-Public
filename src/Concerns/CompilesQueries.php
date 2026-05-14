@@ -45,15 +45,15 @@ trait CompilesQueries
             $aliases[$step->fromModel] = $step->localTableAlias;
             $aliases[$step->toModel] = $step->remoteTableAlias;
 
-            $first = $step->localTableAlias . '.' . $step->localKey;
-            $second = $step->remoteTableAlias . '.' . $step->foreignKey;
+            $localKeyPath = $step->localTableAlias . '.' . $step->localKey;
+            $foreignKeyPath = $step->remoteTableAlias . '.' . $step->foreignKey;
 
             if ($step->relationType === 'BelongsTo') {
-                $first = $step->localTableAlias . '.' . $step->foreignKey;
-                $second = $step->remoteTableAlias . '.' . $step->localKey;
+                $localKeyPath = $step->localTableAlias . '.' . $step->foreignKey;
+                $foreignKeyPath = $step->remoteTableAlias . '.' . $step->localKey;
             }
 
-            $query->join($toInstance->getTable() . ' as ' . $step->remoteTableAlias, $first, '=', $second, 'inner');
+            $query->join($toInstance->getTable() . ' as ' . $step->remoteTableAlias, $localKeyPath, '=', $foreignKeyPath, 'inner');
         }
 
         // Apply Correlation Binding
@@ -88,32 +88,45 @@ trait CompilesQueries
      */
     private function buildInnerQuery(string $base, JoinPlan $plan, array $selects, ?FilterNode $filters): Builder
     {
+        // 1. Initialize Base Table
         $baseInstance = new $base();
         $query = DB::table($baseInstance->getTable() . ' as t0');
 
+        // 2. Apply Relationship JOINs
         foreach ($plan->steps as $step) {
             $toInstance = new $step->toModel();
-            $first = $step->localTableAlias . '.' . $step->localKey;
-            $second = $step->remoteTableAlias . '.' . $step->foreignKey;
+            
+            $localKeyPath = $step->localTableAlias . '.' . $step->localKey;
+            $foreignKeyPath = $step->remoteTableAlias . '.' . $step->foreignKey;
 
+            // Eloquent's BelongsTo naturally inverts the key locations
             if ($step->relationType === 'BelongsTo') {
-                $first = $step->localTableAlias . '.' . $step->foreignKey;
-                $second = $step->remoteTableAlias . '.' . $step->localKey;
+                $localKeyPath = $step->localTableAlias . '.' . $step->foreignKey;
+                $foreignKeyPath = $step->remoteTableAlias . '.' . $step->localKey;
             }
 
-            $query->join($toInstance->getTable() . ' as ' . $step->remoteTableAlias, $first, '=', $second, $step->joinType);
+            $query->join(
+                $toInstance->getTable() . ' as ' . $step->remoteTableAlias, 
+                $localKeyPath, 
+                '=', 
+                $foreignKeyPath, 
+                $step->joinType
+            );
         }
 
+        // 3. Map Aliases for Column Resolution
         $aliases = [$base => 't0'];
         foreach ($plan->steps as $step) {
             $aliases[$step->toModel] = $step->remoteTableAlias;
         }
 
+        // 4. Resolve SELECT Columns and Enforce Security
         $selectColumns = [];
         foreach ($selects as $attr) {
             $isVirtual = $attr->isVirtual || str_starts_with($attr->column, 'va:');
             $finalAlias = $attr->alias ?? $attr->column;
 
+            // Apply Attribute-Level Security (ALS)
             $restriction = $this->getRestrictionType($attr->modelClass, $attr->column, $isVirtual);
             if ($restriction === 'blocked') {
                 $selectColumns[] = DB::raw("'###' as " . $query->getGrammar()->wrap($finalAlias));
@@ -123,9 +136,11 @@ trait CompilesQueries
                 continue;
             }
 
+            // Handle Virtual Attribute Injection
             if ($isVirtual && $this->vaRegistry) {
                 $name = str_starts_with($attr->column, 'va:') ? substr($attr->column, 3) : $attr->column;
                 $va = $this->vaRegistry->findByName($attr->modelClass, $name);
+                
                 if ($va) {
                     $aliasPrefix = $aliases[$attr->modelClass] ?? 't0';
                     $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
@@ -135,12 +150,15 @@ trait CompilesQueries
                     throw new ReportMakerException("Virtual Attribute '{$name}' is missing or deleted. This query cannot be executed.");
                 }
             }
+            
+            // Standard Physical Column
             $alias = $aliases[$attr->modelClass] ?? 't0';
             $selectColumns[] = $alias . '.' . $attr->column . ' as ' . $finalAlias;
         }
 
         $query->select(empty($selectColumns) ? ['t0.*'] : $selectColumns);
 
+        // 5. Apply Inner Query Filters (WHERE clauses)
         if ($filters) {
             $this->applyFilters($query, $filters, $aliases, 'where', 'and', $base);
         }
@@ -168,22 +186,22 @@ trait CompilesQueries
 
         $grammar = $query->getGrammar();
 
-        foreach ($groups as $g) {
-            $innerColName = $getInnerAlias($g->attribute);
+        foreach ($groups as $group) {
+            $innerColName = $getInnerAlias($group->attribute);
             $colStr = 'inner_query.' . $innerColName;
             $selects[] = $colStr;
             $groupCols[] = $colStr;
         }
 
-        foreach ($aggs as $a) {
-            $func = strtoupper($a->function);
-            $innerColName = $getInnerAlias($a->attribute);
+        foreach ($aggs as $aggregate) {
+            $aggregateFunction = strtoupper($aggregate->function);
+            $innerColName = $getInnerAlias($aggregate->attribute);
 
             $innerColWrapped = $grammar->wrap('inner_query.' . $innerColName);
-            $rawAliasName = $a->alias ?? strtolower($func . '_' . preg_replace('/\s+/', '_', $innerColName));
+            $rawAliasName = $aggregate->alias ?? strtolower($aggregateFunction . '_' . preg_replace('/\s+/', '_', $innerColName));
             $aliasWrapped = $grammar->wrap($rawAliasName);
 
-            $selects[] = DB::raw("{$func}({$innerColWrapped}) as {$aliasWrapped}");
+            $selects[] = DB::raw("{$aggregateFunction}({$innerColWrapped}) as {$aliasWrapped}");
         }
 
         $query->select(empty($selects) ? ['inner_query.*'] : $selects);
@@ -246,16 +264,24 @@ trait CompilesQueries
 
             $map = $methodMap[$type];
 
+            // Cast values strictly according to the attribute definition
             $value = $node->value;
             if ($value !== null) {
-                if ($node->attribute->type === 'integer') {
-                    $value = is_array($value) ? array_map('intval', $value) : (int) $value;
-                } elseif ($node->attribute->type === 'float' || $node->attribute->type === 'double') {
-                    $value = is_array($value) ? array_map('floatval', $value) : (float) $value;
-                } elseif ($node->attribute->type === 'boolean') {
-                    $value = is_array($value)
-                        ? array_map(fn($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN), $value)
-                        : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                switch ($node->attribute->type) {
+                    case 'integer':
+                        $value = is_array($value) ? array_map('intval', $value) : (int) $value;
+                        break;
+                    
+                    case 'float':
+                    case 'double':
+                        $value = is_array($value) ? array_map('floatval', $value) : (float) $value;
+                        break;
+                        
+                    case 'boolean':
+                        $value = is_array($value)
+                            ? array_map(fn($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN), $value)
+                            : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                        break;
                 }
             }
 

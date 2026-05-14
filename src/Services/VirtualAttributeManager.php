@@ -6,6 +6,13 @@ use Nisalatp\DynamicReportGenerator\Models\VirtualAttribute;
 use Nisalatp\DynamicReportGenerator\Models\SavedReport;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Virtual Attribute Manager.
+ *
+ * Handles the lifecycle and dependency tracking of Virtual Attributes. 
+ * Provides safeguards against deleting attributes that are actively embedded 
+ * inside saved report ASTs to prevent breaking user dashboards.
+ */
 class VirtualAttributeManager
 {
     /**
@@ -38,7 +45,10 @@ class VirtualAttributeManager
         $usageCount = self::getUsageCount($va);
         
         if ($usageCount > 0 && !$force) {
-            throw new \Exception("This Virtual Attribute is used by {$usageCount} saved reports. Are you sure you want to force delete it? This will break those reports.");
+            throw new \Exception(
+                "Deletion prevented: This Virtual Attribute is actively used by {$usageCount} saved report(s). " .
+                "Are you sure you want to force delete it? Doing so will break those reports."
+            );
         }
 
         $va->delete();

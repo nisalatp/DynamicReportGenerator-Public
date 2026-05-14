@@ -55,31 +55,31 @@ class ReportRequest {
 **Code Evidence**:
 ```php
 // ReportMaker.php
-public function generate(ReportRequest $whatUserWants, ?array $subjects = null): Builder
+public function generate(ReportRequest $request, ?array $subjects = null): Builder
 {
     $this->ensureModelsLoaded();
-    $this->ensureModelAllowed($whatUserWants->baseModel);
+    $this->ensureModelAllowed($request->baseModel);
     $this->resolveAttributeRestrictions($subjects);
-    $this->validateSecurity($whatUserWants);
-    $this->validateFilterDepth($whatUserWants->innerFilters, 'WHERE');
-    $this->validateFilterDepth($whatUserWants->outerFilters, 'HAVING');
+    $this->validateSecurity($request);
+    $this->validateFilterDepth($request->innerFilters, 'WHERE');
+    $this->validateFilterDepth($request->outerFilters, 'HAVING');
 
-    $targetModels = $whatUserWants->targetModels;
+    $targetModels = $request->targetModels;
     // Step 1: Extract VA dependencies
-    $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
+    $this->extractVirtualAttributeDependencies($request, $targetModels);
     
     // Step 2: Bidirectional Link Discovery + BFS Join Planning
     $links = $this->discoverLinks();
-    $joinPlan = $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
+    $joinPlan = $this->planJoins($request->baseModel, $targetModels, $links);
 
     // Step 3: Build Base Query (applies ALS masking/blocking in SELECT)
     $innerQuery = $this->buildInnerQuery(
-        $whatUserWants->baseModel, $joinPlan,
-        $whatUserWants->selectedAttributes, $whatUserWants->innerFilters
+        $request->baseModel, $joinPlan,
+        $request->selectedAttributes, $request->innerFilters
     );
 
     // Step 4: Wrap Subquery (If Aggregates Exist)
-    if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates)) {
+    if (!empty($request->groupBys) || !empty($request->aggregates)) {
         $query = $this->buildOuterQuery(..., $innerQuery, ...);
     } else {
         $query = $innerQuery;

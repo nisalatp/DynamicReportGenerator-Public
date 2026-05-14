@@ -1,5 +1,12 @@
 <?php
 namespace Nisalatp\DynamicReportGenerator\Types;
+/**
+ * Report Request (AST Root).
+ *
+ * This is the central, immutable Data Transfer Object (DTO) that represents
+ * the entire parsed Abstract Syntax Tree (AST) of a user's report query.
+ * It is passed into the core Engine to be compiled into raw SQL.
+ */
 class ReportRequest {
     public function __construct(
         public readonly string $baseModel,

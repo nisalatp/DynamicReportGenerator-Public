@@ -44,12 +44,13 @@ trait EnforcesSecurity
         }
 
         $query = AttributeRestriction::query();
-        $query->where(function ($q) use ($subjects) {
+        
+        $query->where(function ($queryBuilder) use ($subjects) {
             foreach ($subjects as $subject) {
                 if ($subject instanceof Model) {
-                    $q->orWhere(function ($sq) use ($subject) {
-                        $sq->where('subject_type', get_class($subject))
-                            ->where('subject_id', $subject->getKey());
+                    $queryBuilder->orWhere(function ($subQuery) use ($subject) {
+                        $subQuery->where('subject_type', get_class($subject))
+                                 ->where('subject_id', $subject->getKey());
                     });
                 }
             }
@@ -118,16 +119,18 @@ trait EnforcesSecurity
             $checkBlocked($this->extractAttributesFromFilter($req->outerFilters), 'filters');
         }
         if ($req->groupBys) {
-            $gbAttrs = array_map(fn($g) => $g->attribute, $req->groupBys);
-            $checkBlocked($gbAttrs, 'group bys');
+            $groupByAttributes = array_map(fn($group) => $group->attribute, $req->groupBys);
+            $checkBlocked($groupByAttributes, 'group bys');
         }
+        
         if ($req->aggregates) {
-            $aggAttrs = array_map(fn($a) => $a->attribute, $req->aggregates);
-            $checkBlocked($aggAttrs, 'aggregates');
+            $aggregateAttributes = array_map(fn($aggregate) => $aggregate->attribute, $req->aggregates);
+            $checkBlocked($aggregateAttributes, 'aggregates');
         }
+        
         if ($req->sorts) {
-            $sortAttrs = array_map(fn($s) => $s->attribute, $req->sorts);
-            $checkBlocked($sortAttrs, 'sorts');
+            $sortAttributes = array_map(fn($sort) => $sort->attribute, $req->sorts);
+            $checkBlocked($sortAttributes, 'sorts');
         }
     }
 

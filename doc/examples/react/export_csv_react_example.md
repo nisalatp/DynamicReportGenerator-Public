@@ -18,21 +18,21 @@ export default function ReportExporter() {
     baseModel: 'User',
     targetModels: ['Order'],
     selectedAttributes: [
-      { model: 'User', column: 'name', type: 'string' },
-      { model: 'User', column: 'email', type: 'string' },
-      { model: 'User', column: 'country', type: 'string' }
+      { modelClass: 'User', column: 'name', type: 'string' },
+      { modelClass: 'User', column: 'email', type: 'string' },
+      { modelClass: 'User', column: 'country', type: 'string' }
     ],
     groupBys: [
-      { attribute: { model: 'User', column: 'country', type: 'string' } }
+      { attribute: { modelClass: 'User', column: 'country', type: 'string' } }
     ],
     aggregates: [
       {
-        attribute: { model: 'Order', column: 'amount', type: 'integer' },
+        attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
         function: 'SUM',
         alias: 'total_revenue'
       },
       {
-        attribute: { model: 'Order', column: 'id', type: 'integer' },
+        attribute: { modelClass: 'Order', column: 'id', type: 'integer' },
         function: 'COUNT',
         alias: 'order_count'
       }
@@ -41,7 +41,7 @@ export default function ReportExporter() {
     outerFilters: null,
     sorts: [
       {
-        attribute: { model: 'Order', column: 'total_revenue', isVirtual: true },
+        attribute: { modelClass: 'Order', column: 'total_revenue', isVirtual: true },
         direction: 'DESC'
       }
     ]

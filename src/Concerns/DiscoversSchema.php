@@ -90,10 +90,13 @@ trait DiscoversSchema
         // instead of auto-discovery. This gives full control over which
         // models are visible to the reporting engine.
         $configModels = config('dynamicreportgenerator.reportable_models', []);
+        
         if (!empty($configModels)) {
             $this->allApplicationModels = array_values(array_filter($configModels, function ($class) {
+                // Ensure the whitelisted class actually exists and is a valid Eloquent model
                 return class_exists($class) && is_subclass_of($class, Model::class);
             }));
+            
             return $this->allApplicationModels;
         }
 
@@ -226,26 +229,31 @@ trait DiscoversSchema
         $count = count($tokens);
 
         for ($i = 0; $i < $count; $i++) {
+            
+            // 1. Find the Namespace definition
             if ($tokens[$i][0] === T_NAMESPACE) {
                 for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === ';')
+                    if ($tokens[$j] === ';') {
                         break;
+                    }
                     if (is_array($tokens[$j]) && in_array($tokens[$j][0], [T_STRING, T_NAME_QUALIFIED])) {
                         $namespace .= $tokens[$j][1];
                     }
                 }
             }
 
+            // 2. Find the Class declaration
             if ($tokens[$i][0] === T_CLASS) {
                 for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === '{')
+                    if ($tokens[$j] === '{') {
                         break;
+                    }
                     if (is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
                         $class = $tokens[$j][1];
                         break;
                     }
                 }
-                break;
+                break; // Stop parsing after the first class is found
             }
         }
 

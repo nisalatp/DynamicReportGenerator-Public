@@ -16,15 +16,15 @@ export default function SqlDebugger() {
     baseModel: 'User',
     targetModels: ['Order', 'Product'],
     selectedAttributes: [
-      { model: 'User', column: 'name', type: 'string' },
-      { model: 'Product', column: 'name', type: 'string', alias: 'product_name' }
+      { modelClass: 'User', column: 'name', type: 'string' },
+      { modelClass: 'Product', column: 'name', type: 'string', alias: 'product_name' }
     ],
     groupBys: [
-      { attribute: { model: 'User', column: 'country', type: 'string' } }
+      { attribute: { modelClass: 'User', column: 'country', type: 'string' } }
     ],
     aggregates: [
       {
-        attribute: { model: 'Order', column: 'amount', type: 'integer' },
+        attribute: { modelClass: 'Order', column: 'amount', type: 'integer' },
         function: 'SUM',
         alias: 'total_revenue'
       }
@@ -35,7 +35,7 @@ export default function SqlDebugger() {
       children: [
         {
           type: 'leaf',
-          attribute: { model: 'User', column: 'status', type: 'string' },
+          attribute: { modelClass: 'User', column: 'status', type: 'string' },
           operator: '=',
           value: 'active'
         }
@@ -43,7 +43,7 @@ export default function SqlDebugger() {
     },
     outerFilters: null,
     sorts: [
-      { attribute: { model: 'Order', column: 'total_revenue', isVirtual: true }, direction: 'DESC' }
+      { attribute: { modelClass: 'Order', column: 'total_revenue', isVirtual: true }, direction: 'DESC' }
     ]
   };
 

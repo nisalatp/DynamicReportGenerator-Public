@@ -77,56 +77,71 @@ class ReportMaker
      * @param array|null $subjects Optional DynamicReportSubject array for ALS resolution.
      * @return Builder The compiled query, ready for ->get(), ->paginate(), or ->cursor().
      */
-    public function generate(ReportRequest $whatUserWants, ?array $subjects = null): Builder
+    public function generate(ReportRequest $request, ?array $subjects = null): Builder
     {
+        // 1. Schema Validation & Security Enforcement
         $this->ensureModelsLoaded();
-        $this->ensureModelAllowed($whatUserWants->baseModel);
+        $this->ensureModelAllowed($request->baseModel);
+        
         $this->resolveAttributeRestrictions($subjects);
-        $this->validateSecurity($whatUserWants);
-        $this->validateFilterDepth($whatUserWants->innerFilters, 'WHERE');
-        $this->validateFilterDepth($whatUserWants->outerFilters, 'HAVING');
+        $this->validateSecurity($request);
+        
+        $this->validateFilterDepth($request->innerFilters, 'WHERE');
+        $this->validateFilterDepth($request->outerFilters, 'HAVING');
 
-        $targetModels = $whatUserWants->targetModels;
-        $this->extractVirtualAttributeDependencies($whatUserWants, $targetModels);
+        // 2. Virtual Attribute Dependency Extraction
+        $targetModels = $request->targetModels;
+        $this->extractVirtualAttributeDependencies($request, $targetModels);
 
         foreach ($targetModels as $model) {
             $this->ensureModelAllowed($model);
         }
 
+        // 3. Bidirectional Graph Construction & Join Planning
         $links = $this->discoverLinks();
-        $joinPlan = $this->planJoins($whatUserWants->baseModel, $targetModels, $links);
+        $joinPlan = $this->planJoins($request->baseModel, $targetModels, $links);
 
+        // 4. SQL Compilation Pipeline
         $innerQuery = $this->buildInnerQuery(
-            $whatUserWants->baseModel,
+            $request->baseModel,
             $joinPlan,
-            $whatUserWants->selectedAttributes,
-            $whatUserWants->innerFilters
+            $request->selectedAttributes,
+            $request->innerFilters
         );
 
-        if (!empty($whatUserWants->groupBys) || !empty($whatUserWants->aggregates) || $whatUserWants->outerFilters !== null) {
+        $hasComplexOuterDependencies = !empty($request->groupBys) 
+            || !empty($request->aggregates) 
+            || $request->outerFilters !== null;
+
+        if ($hasComplexOuterDependencies) {
             $finalQuery = $this->buildOuterQuery(
-                $whatUserWants->baseModel,
+                $request->baseModel,
                 $innerQuery,
-                $whatUserWants->groupBys,
-                $whatUserWants->aggregates,
-                $whatUserWants->outerFilters,
-                $whatUserWants->selectedAttributes
+                $request->groupBys,
+                $request->aggregates,
+                $request->outerFilters,
+                $request->selectedAttributes
             );
         } else {
             $finalQuery = $innerQuery;
         }
 
-        if (!empty($whatUserWants->sorts)) {
-            foreach ($whatUserWants->sorts as $sort) {
+        // 5. Apply Ordering
+        if (!empty($request->sorts)) {
+            foreach ($request->sorts as $sort) {
                 $colName = $sort->attribute->alias ?? $sort->attribute->column;
+                
+                // Strip virtual prefix for SQL sorting
                 if (str_starts_with($colName, 'va:')) {
                     $colName = substr($colName, 3);
                 }
+                
                 $finalQuery->orderBy($colName, $sort->direction);
             }
         }
 
-        // Enforce the configured max_rows safety limit to protect the host from runaway queries.
+        // 6. Enforce safety limits
+        // Apply the configured max_rows safety limit to protect the host database from runaway queries.
         $maxRows = config('dynamicreportgenerator.limits.max_rows');
         if ($maxRows) {
             $finalQuery->limit((int) $maxRows);

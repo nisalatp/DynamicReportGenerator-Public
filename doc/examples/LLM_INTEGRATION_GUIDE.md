@@ -365,42 +365,64 @@ Every report generation request (`POST /ntp_drg/generate`) must send a JSON body
 
 ```json
 {
-  "baseModel": "App\\Models\\User",
-  "targetModels": ["App\\Models\\Order"],
-  "selectedAttributes": [
-    { "model": "App\\Models\\User", "column": "name", "type": "string" },
-    { "model": "App\\Models\\Order", "column": "amount", "type": "integer" }
-  ],
-  "innerFilters": {
-    "type": "group",
-    "logic": "and",
-    "children": [
-      {
-        "type": "leaf",
-        "model": "App\\Models\\User",
-        "column": "status",
-        "dataType": "string",
-        "operator": "=",
-        "value": "active"
-      }
+    "baseModel": "App\\Models\\User",
+    "targetModels": [
+        "App\\Models\\Order"
+    ],
+    "selectedAttributes": [
+        {
+            "modelClass": "App\\Models\\User",
+            "column": "name",
+            "type": "string"
+        }
+    ],
+    "innerFilters": {
+        "type": "group",
+        "logic": "and",
+        "children": [
+            {
+                "type": "leaf",
+                "attribute": {
+                    "modelClass": "App\\Models\\User",
+                    "column": "status",
+                    "type": "string"
+                },
+                "operator": "=",
+                "value": "active"
+            }
+        ]
+    },
+    "groupBys": [
+        {
+            "attribute": {
+                "modelClass": "App\\Models\\User",
+                "column": "country",
+                "type": "string"
+            }
+        }
+    ],
+    "aggregates": [
+        {
+            "attribute": {
+                "modelClass": "App\\Models\\Order",
+                "column": "amount",
+                "type": "integer"
+            },
+            "function": "SUM",
+            "alias": "total_revenue"
+        }
+    ],
+    "outerFilters": null,
+    "sorts": [
+        {
+            "attribute": {
+                "modelClass": "App\\Models\\User",
+                "column": "name",
+                "type": "string"
+            },
+            "direction": "ASC"
+        }
     ]
-  },
-  "groupBys": [
-    { "model": "App\\Models\\User", "column": "country", "type": "string" }
-  ],
-  "aggregates": [
-    {
-      "model": "App\\Models\\Order",
-      "column": "amount",
-      "type": "integer",
-      "function": "SUM",
-      "alias": "total_revenue"
-    }
-  ],
-  "outerFilters": null,
-  "sorts": [
-    { "model": "App\\Models\\User", "column": "name", "type": "string", "direction": "ASC" }
-  ]
 }
 ```
 
@@ -753,7 +775,7 @@ To ensure the LLM generates valid AST payloads without hallucination, include th
 
 ### Payload Normalization
 
-LLMs may occasionally hallucinate a nested schema (e.g. `{"attribute": {"model": "User", "column": "name"}}`). It is highly recommended to implement a recursive normalization function in your tool handler to automatically flatten these structures into `{"model": "User", "column": "name"}` before passing the payload to `ReportBuilderRequest::fromPayload()`.
+LLMs may occasionally hallucinate a nested schema (e.g. `{"attribute": {"modelClass": "User", "column": "name"}}`). It is highly recommended to implement a recursive normalization function in your tool handler to automatically flatten these structures into `{"modelClass": "User", "column": "name"}` before passing the payload to `ReportBuilderRequest::fromPayload()`.
 ```
 
 ### MCP Agent Workflow

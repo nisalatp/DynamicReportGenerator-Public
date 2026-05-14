@@ -78,17 +78,17 @@ When the Java `saveReportConfiguration` method is executed, the `currentAst` obj
     "targetModels": ["Order", "Product"],
     "selectedAttributes": [],
     "groupBys": [
-      { "attribute": { "model": "User", "column": "country", "type": "string" } },
-      { "attribute": { "model": "Product", "column": "category", "type": "string" } }
+      { "attribute": { "modelClass": "User", "column": "country", "type": "string" } },
+      { "attribute": { "modelClass": "Product", "column": "category", "type": "string" } }
     ],
     "aggregates": [
       { 
-        "attribute": { "model": "Order", "column": "amount", "type": "integer" },
+        "attribute": { "modelClass": "Order", "column": "amount", "type": "integer" },
         "function": "SUM",
         "alias": "total_revenue"
       },
       { 
-        "attribute": { "model": "Order", "column": "id", "type": "integer" },
+        "attribute": { "modelClass": "Order", "column": "id", "type": "integer" },
         "function": "COUNT",
         "alias": "total_orders"
       }
@@ -99,7 +99,7 @@ When the Java `saveReportConfiguration` method is executed, the `currentAst` obj
       "children": [
         {
           "type": "leaf",
-          "attribute": { "model": "User", "column": "status", "type": "string" },
+          "attribute": { "modelClass": "User", "column": "status", "type": "string" },
           "operator": "=",
           "value": "active"
         },
@@ -109,13 +109,13 @@ When the Java `saveReportConfiguration` method is executed, the `currentAst` obj
           "children": [
               {
                   "type": "leaf",
-                  "attribute": { "model": "Product", "column": "category", "type": "string" },
+                  "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
                   "operator": "=",
                   "value": "Electronics"
               },
               {
                   "type": "leaf",
-                  "attribute": { "model": "Product", "column": "category", "type": "string" },
+                  "attribute": { "modelClass": "Product", "column": "category", "type": "string" },
                   "operator": "=",
                   "value": "Software"
               }
@@ -129,13 +129,13 @@ When the Java `saveReportConfiguration` method is executed, the `currentAst` obj
       "children": [
           {
               "type": "leaf",
-              "attribute": { "model": "Order", "column": "amount", "type": "integer", "isVirtual": true },
+              "attribute": { "modelClass": "Order", "column": "amount", "type": "integer", "isVirtual": true },
               "operator": ">",
               "value": 10000
           },
           {
               "type": "leaf",
-              "attribute": { "model": "Order", "column": "id", "type": "integer", "isVirtual": true },
+              "attribute": { "modelClass": "Order", "column": "id", "type": "integer", "isVirtual": true },
               "operator": ">",
               "value": 5
           }

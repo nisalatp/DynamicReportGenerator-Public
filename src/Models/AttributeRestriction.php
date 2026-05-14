@@ -6,7 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * Nisalatp\DynamicReportGenerator\Models\AttributeRestriction
+ * Attribute Restriction Model (Attribute-Level Security).
+ *
+ * This model serves as the core storage layer for the engine's Attribute-Level Security (ALS).
+ * It dictates whether a specific subject (e.g., a User or a Role) is 'masked' or 'blocked'
+ * from viewing or computing against a specific column in a model.
  *
  * @property int $id
  * @property string $model_class

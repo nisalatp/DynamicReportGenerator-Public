@@ -75,7 +75,7 @@ trait DiscoversRelationships
     private function getForwardRelations(): array
     {
         $links = [];
-        $supported = [
+        $supportedTypes = [
             'BelongsTo' => BelongsTo::class,
             'HasOne' => HasOne::class,
             'HasMany' => HasMany::class,
@@ -94,9 +94,9 @@ trait DiscoversRelationships
                     $relation = $method->invoke($instance);
                     if ($relation instanceof Relation) {
                         $type = null;
-                        foreach ($supported as $k => $c) {
-                            if ($relation instanceof $c) {
-                                $type = $k;
+                        foreach ($supportedTypes as $relationName => $relationClass) {
+                            if ($relation instanceof $relationClass) {
+                                $type = $relationName;
                                 break;
                             }
                         }
@@ -247,16 +247,16 @@ trait DiscoversRelationships
                 throw ReportMakerException::noPath($base, $target);
 
             for ($i = 0; $i < count($path) - 1; $i++) {
-                $from = $path[$i];
-                $to = $path[$i + 1];
-                $link = $links[$from][$to];
+                $sourceModel = $path[$i];
+                $targetModel = $path[$i + 1];
+                $link = $links[$sourceModel][$targetModel];
 
                 // Propagate the link's direction (forward/reverse) into the JoinStep
                 // so the join plan carries full traversal metadata for debugging
                 // and for the frontend's join plan visualizer.
                 $steps[] = new JoinStep(
-                    fromModel: $from,
-                    toModel: $to,
+                    fromModel: $sourceModel,
+                    toModel: $targetModel,
                     joinType: 'left',
                     localTableAlias: $i === 0 ? $aliasPrefix . '0' : $aliasPrefix . ($aliasCounter - 1),
                     remoteTableAlias: $aliasPrefix . $aliasCounter,
