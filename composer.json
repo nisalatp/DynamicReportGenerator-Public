@@ -1,0 +1,43 @@
+{
+    "name": "nisalatp/dynamicreportgenerator",
+    "description": "Metadata-centric dynamic reporting engine with virtual attributes",
+    "license": "MIT",
+    "type": "library",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nisalatp\\DynamicReportGenerator\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Nisalatp\\DynamicReportGenerator\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage-text"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Nisalatp\\DynamicReportGenerator\\Providers\\DynamicReportGeneratorServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "authors": [
+        {
+            "name": "A. B. N. T. Priyadarshana",
+            "email": "nisalatp@live.com"
+        }
+    ]
+}
