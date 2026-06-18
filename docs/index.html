@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Report Generator — Documentation</title>
+  <meta name="description" content="Documentation for nisalatp/dynamicreportgenerator — a metadata-centric dynamic reporting engine for Laravel with virtual attributes, BFS join resolution, and a strict JSON AST.">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+
+  <!-- Docsify Theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple-dark.css">
+
+  <!-- Custom Overrides -->
+  <style>
+    :root {
+      /* Brand palette — a rich indigo-to-violet gradient */
+      --theme-color: #7c3aed;
+      --theme-color-secondary: #a78bfa;
+
+      /* Sidebar */
+      --sidebar-background: #0f0f1a;
+      --sidebar-nav-link-color: #c4b5fd;
+      --sidebar-nav-link-color--active: #ede9fe;
+      --sidebar-nav-link-background-color--active: rgba(124, 58, 237, 0.15);
+      --sidebar-name-color: #ede9fe;
+      --sidebar-name-font-weight: 700;
+      --sidebar-border-color: rgba(124, 58, 237, 0.2);
+      --sidebar-width: 280px;
+
+      /* Content area */
+      --base-background-color: #111118;
+      --base-color: #e4e4ef;
+      --heading-color: #ede9fe;
+      --link-color: #a78bfa;
+      --link-color--hover: #c4b5fd;
+
+      /* Code blocks */
+      --code-theme-background: #1a1a2e;
+      --code-inline-background: rgba(124, 58, 237, 0.15);
+      --code-inline-color: #c4b5fd;
+
+      /* Cover page */
+      --cover-background-color: #0f0f1a;
+      --cover-heading-color: #ede9fe;
+      --cover-color: #c4b5fd;
+      --cover-blockquote-color: #a5b4fc;
+
+      /* Misc */
+      --blockquote-border-color: #7c3aed;
+      --table-head-background: rgba(124, 58, 237, 0.15);
+      --notice-tip-border-color: #7c3aed;
+
+      /* Search */
+      --search-background-color: #1a1a2e;
+      --search-result-keyword-color: #a78bfa;
+    }
+
+    /* Cover page gradient */
+    .cover-main {
+      background: linear-gradient(135deg, #0f0f1a 0%, #1e1044 50%, #0f0f1a 100%) !important;
+    }
+
+    /* Nicer badge-style for blockquote tips/important */
+    .markdown-section blockquote {
+      border-left: 4px solid var(--blockquote-border-color);
+      background: rgba(124, 58, 237, 0.06);
+      border-radius: 6px;
+      padding: 12px 16px;
+    }
+
+    /* Table styling */
+    .markdown-section table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .markdown-section table th {
+      background: var(--table-head-background);
+      font-weight: 600;
+    }
+    .markdown-section table td,
+    .markdown-section table th {
+      border: 1px solid rgba(124, 58, 237, 0.15);
+      padding: 8px 12px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #7c3aed55; border-radius: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* GitHub corner override */
+    .github-corner svg { fill: #7c3aed; }
+  </style>
+</head>
+
+<body>
+  <div id="app">Loading documentation...</div>
+
+  <script>
+    window.$docsify = {
+      name: '🚀 Dynamic Report Generator',
+      repo: 'https://github.com/nisalatp/DynamicReportGenerator-Public',
+      loadSidebar: true,
+      subMaxLevel: 3,
+      auto2top: true,
+      coverpage: true,
+      search: {
+        placeholder: 'Search docs...',
+        noData: 'No results found.',
+        depth: 3
+      },
+      copyCode: {
+        buttonText: 'Copy',
+        successText: 'Copied!'
+      },
+      pagination: {
+        previousText: '← Previous',
+        nextText: 'Next →',
+        crossChapter: true
+      },
+      tabs: {
+        persist: true,
+        sync: false,
+        theme: 'classic'
+      }
+    };
+  </script>
+
+  <!-- Docsify core -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+
+  <!-- Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-pagination@2/dist/docsify-pagination.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-tabs@1"></script>
+
+  <!-- Syntax highlighting -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-php.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-jsx.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js"></script>
+</body>
+</html>
