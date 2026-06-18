@@ -1,5 +1,6 @@
 # Exclude development-only files from the Composer dist tarball
 /.github export-ignore
+/docs export-ignore
 /tests export-ignore
 /phpunit.xml export-ignore
 /.gitattributes export-ignore
