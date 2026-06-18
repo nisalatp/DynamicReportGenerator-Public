@@ -68,7 +68,7 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         $this->createFixtureSchema();
-        // Runs the package's own migrations (the four dynamic_* tables).
+        // Runs the package's own migrations (the dynamic_* tables, including the ALS tables).
         $this->artisan('migrate')->run();
         $this->seedFixtureData();
     }

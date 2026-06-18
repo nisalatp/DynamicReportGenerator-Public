@@ -12,6 +12,12 @@ If you're a Laravel developer, you've been here: you ship a beautiful dashboard,
 
 > 📦 **Live on Packagist** &nbsp;·&nbsp; 📚 **[Hosted documentation](https://nisalatp.github.io/DynamicReportGenerator-Public/)** &nbsp;·&nbsp; ✅ Independently built & validated by a third-party developer using only the published package and its docs.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/istore_builder.png" alt="The visual report builder" width="90%">
+</p>
+
+<p align="center"><em>The point-and-click report builder (from the bundled iStore demo) — pick a model and columns; the engine resolves the joins and compiles the SQL for you.</em></p>
+
 ---
 
 ## ✨ Why You'll Love It
@@ -102,11 +108,11 @@ use Nisalatp\DynamicReportGenerator\Builders\VirtualAttributeBuilder;
 VirtualAttributeBuilder::create('Lifetime Value')
     ->forBaseModel(User::class)
     ->dependsOn([Order::class])
-    ->withSqlFragment('(SELECT COALESCE(SUM(amount), 0) FROM orders WHERE orders.user_id = t0.id)')
+    ->withSqlFragment('(SELECT COALESCE(SUM(amount), 0) FROM orders WHERE orders.user_id = {THIS}.id)')
     ->register();
 ```
 
-> ⚠️ **Alias the base table as `t0`.** The engine compiles the base model as `... as t0`, so a correlated-subquery fragment must reference `t0` (e.g. `orders.user_id = t0.id`) — not the literal table name.
+> ⚠️ **Reference the base table with the `{THIS}` placeholder.** The engine substitutes `{THIS}` with the base model's compiled query alias at run time (e.g. `orders.user_id = {THIS}.id`), so the fragment stays correct wherever the model sits in the join — don't hard-code the table name.
 
 Then your users just select it like a normal column:
 
@@ -148,13 +154,19 @@ There's also **model-level** restriction — `restrictModel(Model::class)` hides
 
 ## 🖼️ See it in action
 
-The bundled point-and-click builder: pick a base model, add join targets and columns, and watch the **Compiled SQL** and the **live JSON AST** update as you build — the user never writes SQL or a join.
+All of the screens below run on the **published** engine — captured from the bundled **iStore** demo app.
 
-![The report builder](https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/playground.png)
+**Live results** — the Data Preview returns real rows in-page, ready to **export to CSV**:
 
-Run it for paginated results, then **export to CSV**:
+![iStore — report results](https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/istore_results.png)
 
-![Query results and CSV export](https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/results.png)
+**Attribute-Level Security** — a per-role column matrix; here `email` is *Masked* and `password` / `remember_token` are *Blocked*:
+
+![iStore — Attribute-Level Security matrix](https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/istore_governance.png)
+
+**AI-driven reporting (MCP)** — ask a question in natural language and get a result set back, under the same security rules:
+
+![iStore — AI agent (Model Context Protocol)](https://raw.githubusercontent.com/nisalatp/DynamicReportGenerator-Public/main/docs/assets/istore_ai.png)
 
 ---
 
@@ -176,7 +188,7 @@ One JSON AST drives every client — Blade/AlpineJS, Vue, React, a Java service.
 
 ## ✅ Tested & validated
 
-Covered by a **PHPUnit 11 + Orchestra Testbench** suite (76 tests, in-memory SQLite) spanning BFS join resolution, AST compilation, Virtual Attributes, SQL-injection binding and persistence. Independently, a third-party developer built a complete Laravel application from *only* the published package and the hosted docs, and reported it *"a robust, production-ready reporting engine."*
+Covered by a **PHPUnit 11 + Orchestra Testbench** suite (100 tests, in-memory SQLite) spanning BFS join resolution, AST compilation, Virtual Attributes, Attribute-Level Security, SQL-injection binding and persistence. Independently, a third-party developer installed the published package into a clean Laravel app and ran the full suite — **97 of 100 passing, including 24/24 Attribute-Level Security tests** — and reported it *"a robust, production-ready reporting engine."*
 
 ---
 
