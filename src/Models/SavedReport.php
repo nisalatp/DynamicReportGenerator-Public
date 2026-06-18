@@ -4,6 +4,12 @@ namespace Nisalatp\DynamicReportGenerator\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Saved Report Model.
+ *
+ * Eloquent model responsible for persisting a generated report's AST payload
+ * to the database. Acts as the anchor point for Report Ownership and assignment.
+ */
 class SavedReport extends Model
 {
     protected $table = 'dynamic_saved_reports';
@@ -31,8 +37,13 @@ class SavedReport extends Model
 
     public function assignedUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
+        // Resolve the host application's configured User model so that custom
+        // authenticatable models (e.g. App\Models\Admin) are supported without
+        // any modification to this package. Falls back to Laravel's default User.
+        $userModel = config('auth.providers.users.model', \Illuminate\Foundation\Auth\User::class);
+
         return $this->belongsToMany(
-            \Illuminate\Foundation\Auth\User::class, // Defaults to the standard User model. Client can override if needed.
+            $userModel,
             'dynamic_report_user',
             'saved_report_id',
             'user_id'

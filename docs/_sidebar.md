@@ -15,6 +15,7 @@
   - [Load Query](examples/blade/load-query.md)
   - [Run Saved Query](examples/blade/run-saved-query.md)
   - [Virtual Attributes](examples/blade/virtual-attributes.md)
+  - [Attribute-Level Security](examples/blade/attribute-level-security.md)
 
 - **Examples — Vue 3**
   - [Schema Discovery](examples/vue/schema-discovery.md)
@@ -23,6 +24,7 @@
   - [Load Query](examples/vue/load-query.md)
   - [Run Saved Query](examples/vue/run-saved-query.md)
   - [Virtual Attributes](examples/vue/virtual-attributes.md)
+  - [Attribute-Level Security](examples/vue/attribute-level-security.md)
 
 - **Examples — React**
   - [Schema Discovery](examples/react/schema-discovery.md)
@@ -31,6 +33,7 @@
   - [Load Query](examples/react/load-query.md)
   - [Run Saved Query](examples/react/run-saved-query.md)
   - [Virtual Attributes](examples/react/virtual-attributes.md)
+  - [Attribute-Level Security](examples/react/attribute-level-security.md)
 
 - **Examples — Java**
   - [Schema Discovery](examples/java/schema-discovery.md)
@@ -39,6 +42,7 @@
   - [Load Query](examples/java/load-query.md)
   - [Run Saved Query](examples/java/run-saved-query.md)
   - [Virtual Attributes](examples/java/virtual-attributes.md)
+  - [Attribute-Level Security](examples/java/attribute-level-security.md)
 
 - **Examples — MCP (AI Integration)**
   - [Schema Discovery](examples/mcp/schema-discovery.md)
@@ -47,6 +51,7 @@
   - [Load Query](examples/mcp/load-query.md)
   - [Run Saved Query](examples/mcp/run-saved-query.md)
   - [Virtual Attributes](examples/mcp/virtual-attributes.md)
+  - [Attribute-Level Security](examples/mcp/attribute-level-security.md)
 
 - **Links**
   - [![GitHub](https://img.shields.io/badge/GitHub-repo-181717?logo=github&style=flat-square)](https://github.com/nisalatp/DynamicReportGenerator-Public)

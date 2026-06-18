@@ -1,8 +1,9 @@
 {
     "name": "nisalatp/dynamicreportgenerator",
-    "description": "Metadata-centric dynamic reporting engine with virtual attributes",
+    "description": "Metadata-centric dynamic reporting engine for Laravel with automatic BFS joins, virtual attributes, and attribute-level security (privacy-aware masking).",
     "license": "MIT",
     "type": "library",
+    "keywords": ["laravel", "reporting", "query-builder", "ast", "graph", "bfs", "virtual-attributes", "access-control"],
     "require": {
         "php": "^8.2",
         "illuminate/support": "^11.0|^12.0|^13.0",
@@ -12,32 +13,15 @@
         "orchestra/testbench": "^9.0",
         "phpunit/phpunit": "^11.0"
     },
-    "autoload": {
-        "psr-4": {
-            "Nisalatp\\DynamicReportGenerator\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Nisalatp\\DynamicReportGenerator\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": "phpunit",
-        "test-coverage": "phpunit --coverage-text"
-    },
+    "autoload": { "psr-4": { "Nisalatp\\DynamicReportGenerator\\": "src/" } },
+    "autoload-dev": { "psr-4": { "Nisalatp\\DynamicReportGenerator\\Tests\\": "tests/" } },
     "extra": {
         "laravel": {
-            "providers": [
-                "Nisalatp\\DynamicReportGenerator\\Providers\\DynamicReportGeneratorServiceProvider"
-            ],
+            "providers": ["Nisalatp\\DynamicReportGenerator\\Providers\\DynamicReportGeneratorServiceProvider"],
             "aliases": {}
         }
     },
-    "authors": [
-        {
-            "name": "Nisala Aloka Bandara",
-            "email": "nisalatp@live.com"
-        }
-    ]
+    "authors": [ { "name": "Nisala Aloka Bandara", "email": "nisalatp@live.com" } ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

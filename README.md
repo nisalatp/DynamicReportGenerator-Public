@@ -20,6 +20,7 @@ If you're a Laravel developer, you've been here: you ship a beautiful dashboard,
 - **Virtual Attributes (the secret sauce).** Pre-register a heavy SQL expression — say, a user's lifetime value — as a named "Virtual Attribute". To your end-users it's just another column to tick.
 - **Memory-efficient by design.** The engine compiles your request and pushes the work *down to the database*; it does **not** hydrate thousands of Eloquent models into PHP just to aggregate them. Virtual Attributes run as correlated subqueries — O(1) application memory, whatever the row count.
 - **Predictable.** Call `explainJoinPlan()` to inspect the resolved JOIN path, or `toRawSql()` to see the exact compiled query — *before* you run it.
+- **Secure by default.** Built-in **attribute-level security** — mask or block any column per user or role — alongside report assignment and full audit logging.
 - **100% UI-agnostic.** Vue, React, Livewire, AlpineJS, a Java client — even an LLM via the Model Context Protocol. They all speak the same JSON AST.
 
 ---
@@ -112,6 +113,36 @@ Then your users just select it like a normal column:
 ```php
 ->select(User::class, 'Lifetime Value', 'integer', isVirtual: true)
 ```
+
+---
+
+## 🔐 Attribute-Level Security (ALS)
+
+Beyond report assignment, the engine ships with a **column-level security firewall**. Restrict any attribute for a *subject* (a user, role, team, …) in one of two modes:
+
+- **`masked`** — the column may still be selected, but its values are redacted in the output.
+- **`blocked`** — the column is off-limits; using it in a filter, grouping, aggregate, or sort raises a `ReportMakerSecurityException` (`blocked` always wins over `masked`).
+
+```php
+use App\Models\{User, Role};
+use Nisalatp\DynamicReportGenerator\Facades\DynamicReport;
+
+DynamicReport::restrictAttribute(User::class, 'salary', $supportRole, 'masked');  // redact
+DynamicReport::restrictAttribute(User::class, 'ssn',    $supportRole, 'blocked'); // forbid
+```
+
+Enforcement is automatic at generation time. Pass the subjects explicitly, or let the engine resolve them from the authenticated user:
+
+```php
+// explicit subjects
+$rows = DynamicReport::generate($request, [$supportRole])->paginate(50);
+
+// implicit — if your User implements DynamicReportSubject, the engine calls
+// $user->getDynamicReportSubjects() for the logged-in user automatically
+$rows = DynamicReport::generate($request)->paginate(50);
+```
+
+There's also **model-level** restriction — `restrictModel(Model::class)` hides an entire model from the report surface. Per-framework walkthroughs live in the [Attribute-Level Security examples](https://nisalatp.github.io/DynamicReportGenerator-Public/#/examples/blade/attribute-level-security).
 
 ---
 

@@ -3,6 +3,12 @@ namespace Nisalatp\DynamicReportGenerator\Types;
 
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
 
+/**
+ * Report Serializer.
+ *
+ * Acts as the serialization bridge between frontend JSON payloads and the
+ * immutable Abstract Syntax Tree (AST) node objects used by the reporting engine.
+ */
 class ReportSerializer {
     public function toJson(ReportRequest $request): string {
         $data = [
@@ -29,19 +35,27 @@ class ReportSerializer {
         return new ReportRequest(
             baseModel: $data['baseModel'],
             targetModels: $data['targetModels'] ?? [],
-            selectedAttributes: array_map(fn($attr) => $this->parseAttribute($attr), $data['selectedAttributes'] ?? []),
+            selectedAttributes: array_map(function ($attr) {
+                return $this->parseAttribute($attr);
+            }, $data['selectedAttributes'] ?? []),
             innerFilters: isset($data['innerFilters']) ? $this->parseFilterNode($data['innerFilters']) : null,
-            groupBys: array_map(fn($gb) => new GroupBy($this->parseAttribute($gb['attribute'])), $data['groupBys'] ?? []),
-            aggregates: array_map(fn($agg) => new Aggregate(
-                $this->parseAttribute($agg['attribute']), 
-                $agg['function'], 
-                $agg['alias'] ?? null
-            ), $data['aggregates'] ?? []),
+            groupBys: array_map(function ($gb) {
+                return new GroupBy($this->parseAttribute($gb['attribute']));
+            }, $data['groupBys'] ?? []),
+            aggregates: array_map(function ($agg) {
+                return new Aggregate(
+                    $this->parseAttribute($agg['attribute']), 
+                    $agg['function'], 
+                    $agg['alias'] ?? null
+                );
+            }, $data['aggregates'] ?? []),
             outerFilters: isset($data['outerFilters']) ? $this->parseFilterNode($data['outerFilters']) : null,
-            sorts: array_map(fn($sort) => new Sort(
-                $this->parseAttribute($sort['attribute']),
-                $sort['direction'] ?? 'ASC'
-            ), $data['sorts'] ?? [])
+            sorts: array_map(function ($sort) {
+                return new Sort(
+                    $this->parseAttribute($sort['attribute']),
+                    $sort['direction'] ?? 'ASC'
+                );
+            }, $data['sorts'] ?? [])
         );
     }
 
@@ -51,11 +65,12 @@ class ReportSerializer {
             column: $data['column'],
             type: $data['type'],
             isVirtual: $data['isVirtual'] ?? false,
-            jsonPath: $data['jsonPath'] ?? null
+            jsonPath: $data['jsonPath'] ?? null,
+            alias: $data['alias'] ?? null
         );
     }
 
-    private function parseFilterNode(array $data): FilterNode {
+    public function parseFilterNode(array $data): FilterNode {
         if (!isset($data['type'])) {
             throw new \InvalidArgumentException("Filter node missing type");
         }
