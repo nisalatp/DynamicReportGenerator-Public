@@ -64,8 +64,8 @@ readonly class VirtualAttributeRequest
         if (($node['type'] ?? '') === 'leaf') {
             if (empty($node['column'])) return null;
             return new FilterLeaf(
-                new Attribute($node['model'], $node['column'], $node['dataType'] ?? 'string'),
-                $node['operator'],
+                new Attribute($node['modelClass'] ?? $node['model'] ?? '', $node['column'], $node['dataType'] ?? 'string'),
+                $node['operator'] ?? '=',
                 $node['value'] ?? null
             );
         }
