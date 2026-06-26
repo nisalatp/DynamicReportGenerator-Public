@@ -251,6 +251,18 @@ trait CompilesQueries
         $selects = [];
         $groupCols = [];
 
+        // Build an alias map for the outer query context.
+        // In the outer query all columns come from `inner_query`, so every model
+        // maps to that alias. This ensures Virtual Attribute {THIS} placeholders
+        // are replaced with 'inner_query' instead of the invalid fallback 't0'
+        // which does not exist in the outer scope.
+        $outerAliases = [$base => 'inner_query'];
+        foreach ($innerSelects as $selAttr) {
+            if (!isset($outerAliases[$selAttr->modelClass])) {
+                $outerAliases[$selAttr->modelClass] = 'inner_query';
+            }
+        }
+
         $getInnerAlias = function (Attribute $attr) use ($innerSelects) {
             foreach ($innerSelects as $selAttr) {
                 if ($selAttr->modelClass === $attr->modelClass && $selAttr->column === $attr->column) {
@@ -285,7 +297,7 @@ trait CompilesQueries
             $query->groupBy($groupCols);
 
         if ($filters) {
-            $this->applyFilters($query, $filters, [], 'having', 'and', $base, $innerSelects, $aggs);
+            $this->applyFilters($query, $filters, $outerAliases, 'having', 'and', $base, $innerSelects, $aggs);
         }
 
         return $query;
