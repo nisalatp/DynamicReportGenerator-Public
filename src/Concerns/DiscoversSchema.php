@@ -128,10 +128,13 @@ trait DiscoversSchema
     /**
      * Schema Discovery: Get all attributes (physical and virtual) for a model, excluding blocked ones.
      *
-     * @param string $modelClass
+     * @param string     $modelClass
+     * @param array|null $subjects Optional DynamicReportSubject array for ALS filtering.
+     *                             When null, falls back to auth()->user(). When empty [],
+     *                             no blocked-column filtering is applied.
      * @return array Array of attribute names.
      */
-    public function getModelAttributes(string $modelClass): array
+    public function getModelAttributes(string $modelClass, ?array $subjects = null): array
     {
         $this->ensureModelsLoaded();
         $this->ensureModelAllowed($modelClass);
@@ -147,9 +150,15 @@ trait DiscoversSchema
 
         $allCols = array_merge($physicalCols, $virtualCols);
 
-        // Exclude blocked attributes from schema discovery so they don't even show up in UIs
-        // We load restrictions for the current active user here.
-        $this->resolveAttributeRestrictions(null);
+        // Exclude blocked attributes from schema discovery so they don't even show up in UIs.
+        // Schema introspection is read-only, so if no auth context exists and no subjects
+        // are provided, we gracefully show all columns rather than throwing.
+        try {
+            $this->resolveAttributeRestrictions($subjects);
+        } catch (\Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerSecurityException $e) {
+            // No auth context — return all columns unfiltered
+            return array_values($allCols);
+        }
 
         return array_values(array_filter($allCols, function ($col) use ($modelClass) {
             return $this->getRestrictionType($modelClass, $col, str_starts_with($col, 'va:')) !== 'blocked';

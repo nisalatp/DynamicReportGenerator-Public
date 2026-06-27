@@ -40,7 +40,7 @@ class PersistenceAuditTest extends TestCase
     {
         $saved = $this->maker()->saveReport('R', $this->sampleRequest(), 1);
 
-        $builder = $this->maker()->loadAndGenerate($saved->id, 2);
+        $builder = $this->maker()->loadAndGenerate($saved->id, 2, []);
 
         $this->assertInstanceOf(Builder::class, $builder);
         $this->assertCount(2, $builder->get());
@@ -116,7 +116,7 @@ class PersistenceAuditTest extends TestCase
     public function test_get_report_logs_orders_most_recent_first(): void
     {
         $saved = $this->maker()->saveReport('R', $this->sampleRequest(), 1); // 'created'
-        $this->maker()->loadAndGenerate($saved->id, 1);                      // 'executed'
+        $this->maker()->loadAndGenerate($saved->id, 1, []);                      // 'executed'
 
         $logs = $this->maker()->getReportLogs($saved->id);
 

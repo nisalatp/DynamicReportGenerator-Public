@@ -67,8 +67,15 @@ trait ManagesReports
 
     /**
      * Load a saved report, deserialize it, and execute it through the engine.
+     *
+     * @param int        $savedReportId   The ID of the saved report to load.
+     * @param int|null   $executedByUserId The ID of the user executing the report (for audit logging).
+     * @param array|null $subjects         Optional DynamicReportSubject array for ALS resolution.
+     *                                     When null, falls back to auth()->user(). Pass explicitly
+     *                                     in non-HTTP contexts (queues, CLI, scheduled tasks) to
+     *                                     ensure the runner's attribute restrictions are enforced.
      */
-    public function loadAndGenerate(int $savedReportId, ?int $executedByUserId = null): Builder
+    public function loadAndGenerate(int $savedReportId, ?int $executedByUserId = null, ?array $subjects = null): Builder
     {
         try {
             // 1. Arrange: Fetch and deserialize
@@ -80,7 +87,7 @@ trait ManagesReports
 
             // 2. Act: Generate query via Engine
             $request = ReportRequest::fromJson($json);
-            $builder = $this->generate($request);
+            $builder = $this->generate($request, $subjects);
 
             // 3. Log Action
             $this->logAction($savedReport->id, $executedByUserId, 'executed');

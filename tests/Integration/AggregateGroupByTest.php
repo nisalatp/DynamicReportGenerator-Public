@@ -17,7 +17,7 @@ class AggregateGroupByTest extends TestCase
             ->aggregate(Order::class, 'amount', 'integer', 'SUM', 'total')
             ->build();
 
-        $query = $this->maker()->generate($request);
+        $query = $this->maker()->generate($request, []);
 
         // Aggregation is performed by wrapping the inner query as a subquery.
         $this->assertStringContainsString('inner_query', $query->toSql());
@@ -37,7 +37,7 @@ class AggregateGroupByTest extends TestCase
             ->having(fn ($f) => $f->where(Order::class, 'total', '>', 100, 'integer'))
             ->build();
 
-        $query = $this->maker()->generate($request);
+        $query = $this->maker()->generate($request, []);
         $this->assertStringContainsString('having', strtolower($query->toSql()));
 
         $statuses = $query->get()->pluck('status')->all();

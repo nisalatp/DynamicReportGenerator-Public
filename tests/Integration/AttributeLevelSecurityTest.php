@@ -304,7 +304,7 @@ class AttributeLevelSecurityTest extends TestCase
             ->build();
 
         $this->expectException(\Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException::class);
-        $this->maker()->generate($req)->get();
+        $this->maker()->generate($req, [])->get();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -437,7 +437,7 @@ class AttributeLevelSecurityTest extends TestCase
         $this->maker()->assignReport($saved->id, 2, 1);
 
         // Assignee (user 2) generates the report — must succeed and return rows
-        $rows = $this->maker()->loadAndGenerate($saved->id, 2)->get();
+        $rows = $this->maker()->loadAndGenerate($saved->id, 2, [])->get();
         $this->assertGreaterThan(0, count($rows));
     }
 
@@ -475,6 +475,6 @@ class AttributeLevelSecurityTest extends TestCase
             ->build();
 
         $this->expectException(\Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException::class);
-        $this->maker()->generate($req)->get();
+        $this->maker()->generate($req, [])->get();
     }
 }

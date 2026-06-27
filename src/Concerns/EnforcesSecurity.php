@@ -39,6 +39,18 @@ trait EnforcesSecurity
             }
         }
 
+        // Guard: if $subjects was null (not explicitly provided) and auth fallback
+        // didn't resolve anyone, refuse to run. This prevents reports from executing
+        // without an identity context (e.g., unauthenticated requests, queue jobs
+        // without explicit subjects). Callers that intentionally want no restrictions
+        // should pass an empty array [] instead of null.
+        if ($subjects === null) {
+            throw new ReportMakerSecurityException(
+                'Cannot generate reports without an authenticated user or explicit subjects. ' .
+                'Pass subjects explicitly or ensure an authenticated session exists.'
+            );
+        }
+
         if (empty($subjects)) {
             return;
         }

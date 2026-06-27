@@ -20,7 +20,7 @@ class QueryCompilationTest extends TestCase
             ->select(User::class, 'email', 'string')
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
 
         $this->assertCount(2, $rows);
         $this->assertEqualsCanonicalizing(['Alice', 'Bob'], $rows->pluck('name')->all());
@@ -34,7 +34,7 @@ class QueryCompilationTest extends TestCase
             ->filter(fn ($f) => $f->where(User::class, 'id', '=', '1', 'integer'))
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
 
         $this->assertCount(1, $rows);
         $this->assertSame('Alice', $rows->first()->name);
@@ -47,7 +47,7 @@ class QueryCompilationTest extends TestCase
             ->filter(fn ($f) => $f->whereIn(User::class, 'id', [1, 2], 'integer'))
             ->build();
 
-        $this->assertCount(2, $this->maker()->generate($request)->get());
+        $this->assertCount(2, $this->maker()->generate($request, [])->get());
     }
 
     public function test_where_between_inclusive(): void
@@ -57,7 +57,7 @@ class QueryCompilationTest extends TestCase
             ->filter(fn ($f) => $f->whereBetween(User::class, 'id', [1, 1], 'integer'))
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
         $this->assertCount(1, $rows);
         $this->assertSame('Alice', $rows->first()->name);
     }
@@ -69,7 +69,7 @@ class QueryCompilationTest extends TestCase
             ->filter(fn ($f) => $f->where(User::class, 'name', 'like', '%lic%', 'string'))
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
         $this->assertCount(1, $rows);
         $this->assertSame('Alice', $rows->first()->name);
     }
@@ -81,7 +81,7 @@ class QueryCompilationTest extends TestCase
             ->filter(fn ($f) => $f->whereNull(User::class, 'email'))
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
         $this->assertCount(1, $rows);
         $this->assertSame('Bob', $rows->first()->name);
     }
@@ -94,7 +94,7 @@ class QueryCompilationTest extends TestCase
             ->select(Product::class, 'name', 'string', false, 'product_name')
             ->build();
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
 
         // 3 order_items across the dataset -> 3 joined rows.
         $this->assertCount(3, $rows);
@@ -117,7 +117,7 @@ class QueryCompilationTest extends TestCase
             })
             ->build();
 
-        $this->assertCount(2, $this->maker()->generate($request)->get());
+        $this->assertCount(2, $this->maker()->generate($request, [])->get());
     }
 
     public function test_sorting_descending(): void
@@ -132,7 +132,7 @@ class QueryCompilationTest extends TestCase
             sorts: [new Sort(new Attribute(User::class, 'id', 'integer'), 'DESC')]
         );
 
-        $rows = $this->maker()->generate($request)->get();
+        $rows = $this->maker()->generate($request, [])->get();
         $this->assertSame(2, (int) $rows->first()->id);
     }
 
@@ -144,13 +144,13 @@ class QueryCompilationTest extends TestCase
             ->select(User::class, 'name', 'string')
             ->filter(fn ($f) => $f->where(User::class, 'id', '=', 1, 'integer'))
             ->build();
-        $this->assertStringContainsString('= 1', $maker->toRawSql($maker->generate($numeric)));
+        $this->assertStringContainsString('= 1', $maker->toRawSql($maker->generate($numeric, [])));
 
         $string = ReportBuilder::forModel(User::class)
             ->select(User::class, 'name', 'string')
             ->filter(fn ($f) => $f->where(User::class, 'name', '=', 'Alice', 'string'))
             ->build();
-        $this->assertStringContainsString("'Alice'", $maker->toRawSql($maker->generate($string)));
+        $this->assertStringContainsString("'Alice'", $maker->toRawSql($maker->generate($string, [])));
     }
 
     public function test_generate_paginated_returns_paginator(): void
@@ -159,7 +159,7 @@ class QueryCompilationTest extends TestCase
             ->select(User::class, 'name', 'string')
             ->build();
 
-        $paginator = $this->maker()->generatePaginated($request, 1);
+        $paginator = $this->maker()->generatePaginated($request, 1, []);
 
         $this->assertInstanceOf(LengthAwarePaginator::class, $paginator);
         $this->assertSame(1, $paginator->perPage());

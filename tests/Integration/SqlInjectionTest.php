@@ -18,7 +18,7 @@ class SqlInjectionTest extends TestCase
             ->filter(fn ($f) => $f->where(User::class, 'name', '=', self::PAYLOAD, 'string'))
             ->build();
 
-        $query = $this->maker()->generate($request);
+        $query = $this->maker()->generate($request, []);
 
         // The malicious string travels as a PDO binding, never as SQL text.
         $this->assertContains(self::PAYLOAD, $query->getBindings());
@@ -36,7 +36,7 @@ class SqlInjectionTest extends TestCase
             ->filter(fn ($f) => $f->whereIn(User::class, 'name', [self::PAYLOAD, 'Alice'], 'string'))
             ->build();
 
-        $query = $this->maker()->generate($request);
+        $query = $this->maker()->generate($request, []);
 
         $this->assertContains(self::PAYLOAD, $query->getBindings());
         $query->get();

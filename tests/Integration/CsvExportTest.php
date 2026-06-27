@@ -24,7 +24,7 @@ class CsvExportTest extends TestCase
             sorts: [new Sort(new Attribute(User::class, 'id', 'integer'), 'ASC')]
         );
 
-        $response = $this->maker()->exportToCsv($request, 'users.csv');
+        $response = $this->maker()->exportToCsv($request, 'users.csv', []);
 
         $this->assertInstanceOf(StreamedResponse::class, $response);
         $this->assertSame('text/csv', $response->headers->get('Content-Type'));

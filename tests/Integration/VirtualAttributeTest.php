@@ -66,7 +66,7 @@ class VirtualAttributeTest extends TestCase
             ->select(User::class, 'Total Spent', 'integer', true, 'total_spent')
             ->build();
 
-        $totals = $this->maker()->generate($request)->get()->pluck('total_spent', 'name');
+        $totals = $this->maker()->generate($request, [])->get()->pluck('total_spent', 'name');
 
         $this->assertSame(150, (int) $totals['Alice']); // 100 + 50
         $this->assertSame(200, (int) $totals['Bob']);    // 200
