@@ -11,3 +11,5 @@ composer.lock
 test.php
 test2.php
 *.env
+.DS_Store
+tests/logs/

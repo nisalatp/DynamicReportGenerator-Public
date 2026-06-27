@@ -12,6 +12,7 @@ use Nisalatp\DynamicReportGenerator\Types\FilterGroup;
 use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
 use Nisalatp\DynamicReportGenerator\Types\VirtualAttributeRequest;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Query Compilation — SQL construction for SELECT, JOIN, WHERE, GROUP BY, HAVING.
@@ -197,6 +198,18 @@ trait CompilesQueries
         }
 
         // 4. Resolve SELECT Columns and Enforce Security
+        // When no attributes are explicitly selected, auto-expand to all physical
+        // columns of the base model. This ensures every column passes through the
+        // ALS enforcement loop instead of falling back to an unguarded SELECT t0.*.
+        if (empty($selects)) {
+            $baseTable = $baseInstance->getTable();
+            $columns = Schema::getColumnListing($baseTable);
+            $selects = array_map(
+                fn(string $col) => new Attribute($base, $col, 'string'),
+                $columns
+            );
+        }
+
         $selectColumns = [];
         foreach ($selects as $attr) {
             $isVirtual = $attr->isVirtual || str_starts_with($attr->column, 'va:');

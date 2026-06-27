@@ -6,16 +6,18 @@ namespace Nisalatp\DynamicReportGenerator\Types;
  * Represents a logical grouping (AND/OR) of other Filter Nodes (either Leaves or other Groups).
  * This allows the AST to model complex, nested boolean logic.
  */
-readonly class FilterGroup implements FilterNode {
-    
+readonly class FilterGroup implements FilterNode
+{
+
     public string $logic;
-    
-    public function __construct(string $logic, public array $children = []) 
-    { 
-        $this->logic = strtolower($logic) === 'or' ? 'or' : 'and'; 
+
+    public function __construct(string $logic, public array $children = [])
+    {
+        $this->logic = strtolower($logic) === 'or' ? 'or' : 'and';
     }
 
-    public function toArray(): array {
+    public function toArray(): array
+    {
         return [
             'type' => 'group',
             'logic' => $this->logic,

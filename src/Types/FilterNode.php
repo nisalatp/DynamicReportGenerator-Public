@@ -1,5 +1,6 @@
 <?php
 namespace Nisalatp\DynamicReportGenerator\Types;
-interface FilterNode {
+interface FilterNode
+{
     public function toArray(): array;
 }
