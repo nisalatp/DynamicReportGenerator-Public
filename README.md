@@ -188,7 +188,7 @@ One JSON AST drives every client — Blade/AlpineJS, Vue, React, a Java service.
 
 ## ✅ Tested & validated
 
-Covered by a **PHPUnit 11 + Orchestra Testbench** suite (100 tests, in-memory SQLite) spanning BFS join resolution, AST compilation, Virtual Attributes, Attribute-Level Security, SQL-injection binding and persistence. Independently, a third-party developer installed the published package into a clean Laravel app and ran the full suite — **97 of 100 passing, including 24/24 Attribute-Level Security tests** — and reported it *"a robust, production-ready reporting engine."*
+Covered by a **PHPUnit 11 + Orchestra Testbench** suite (112 tests, in-memory SQLite) spanning BFS join resolution, AST compilation, Virtual Attributes, Attribute-Level Security, SQL-injection binding and persistence. Independently, a third-party developer installed the published package into a clean Laravel app and ran the full suite — **112 of 112 passing, including 24/24 Attribute-Level Security tests** — and reported it *"a robust, production-ready reporting engine."*
 
 ---
 

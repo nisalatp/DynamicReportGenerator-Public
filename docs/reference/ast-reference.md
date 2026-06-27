@@ -1,6 +1,6 @@
 # Abstract Syntax Tree (AST) Reference Guide
 
-> **Package:** [`nisalatp/dynamicreportgenerator`](https://packagist.org/packages/nisalatp/dynamicreportgenerator) (v1.0.0, MIT) — `composer require nisalatp/dynamicreportgenerator`.
+> **Package:** [`nisalatp/dynamicreportgenerator`](https://packagist.org/packages/nisalatp/dynamicreportgenerator) (v2.2.0, MIT) — `composer require nisalatp/dynamicreportgenerator`.
 
 This document is the definitive guide to the strict JSON Abstract Syntax Tree (AST) payload required by the Dynamic Report Generator engine. 
 

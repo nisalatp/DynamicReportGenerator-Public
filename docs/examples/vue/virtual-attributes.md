@@ -1,6 +1,6 @@
 # Register Virtual Attribute Example: Vue 3 (Composition API)
 
-> **Backend package — `nisalatp/dynamicreportgenerator` (v1.0.0, MIT):** this frontend example drives the
+> **Backend package — `nisalatp/dynamicreportgenerator` (v2.2.0, MIT):** this frontend example drives the
 > published Composer package. Install and configure the Laravel backend first, register your reportable models
 > in `config/dynamicreportgenerator.php`, and expose JSON endpoints via the `DynamicReport` facade
 > (`generate`, `getAvailableModels`, `getModelAttributes`, `saveReport`, `loadAndGenerate`). Payload schema: [AST_REFERENCE.md](reference/ast-reference).
