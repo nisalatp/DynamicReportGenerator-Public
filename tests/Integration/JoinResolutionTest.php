@@ -17,10 +17,17 @@ class JoinResolutionTest extends TestCase
 {
     public function test_constructor_drops_invalid_or_non_model_classes(): void
     {
-        $maker = new ReportMaker(
-            ['App\\Does\\Not\\Exist', \stdClass::class, User::class],
-            new VirtualAttributeRegistry()
-        );
+        // The engine now filters via config whitelist, not constructor args.
+        // Invalid classes and non-Model classes are silently excluded.
+        config([
+            'dynamicreportgenerator.reportable_models' => [
+                'App\\Does\\Not\\Exist',   // doesn't exist
+                \stdClass::class,          // not an Eloquent Model
+                User::class,               // valid
+            ],
+        ]);
+
+        $maker = new ReportMaker(new VirtualAttributeRegistry());
 
         $this->assertSame([User::class], $maker->getAvailableModels());
     }

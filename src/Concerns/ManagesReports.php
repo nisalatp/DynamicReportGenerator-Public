@@ -110,6 +110,7 @@ trait ManagesReports
     {
         return ReportLog::where('saved_report_id', $savedReportId)
             ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')  // Tiebreaker for same-second timestamps
             ->get();
     }
 

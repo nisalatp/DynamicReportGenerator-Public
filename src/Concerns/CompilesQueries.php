@@ -12,6 +12,8 @@ use Nisalatp\DynamicReportGenerator\Types\FilterGroup;
 use Nisalatp\DynamicReportGenerator\Types\FilterLeaf;
 use Nisalatp\DynamicReportGenerator\Types\VirtualAttributeRequest;
 use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerException;
+use Nisalatp\DynamicReportGenerator\Exceptions\ReportMakerSecurityException;
+use Nisalatp\DynamicReportGenerator\Types\Aggregate;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -91,10 +93,16 @@ trait CompilesQueries
         // Use whereRaw to bind to the outer query's t0 table
         $query->whereRaw("{$baseAliasInSubquery}.{$pk} = t0.{$pk}");
 
-        // Select the aggregate
+        // Select the aggregate — validate function against allowlist and sanitize column
         $aggregateFunc = strtoupper($request->aggregateFunction);
-        $aggregateCol = $request->aggregateColumn;
-        $query->selectRaw("{$aggregateFunc}(va_sub0.{$aggregateCol})");
+        if (!in_array($aggregateFunc, Aggregate::ALLOWED_FUNCTIONS, true)) {
+            throw new ReportMakerSecurityException(
+                "Invalid aggregate function '{$aggregateFunc}' in Virtual Attribute. " .
+                "Allowed: " . implode(', ', Aggregate::ALLOWED_FUNCTIONS)
+            );
+        }
+        $aggregateCol = preg_replace('/[^a-zA-Z0-9_]/', '', $request->aggregateColumn);
+        $query->selectRaw("{$aggregateFunc}(" . $query->getGrammar()->wrap("va_sub0.{$aggregateCol}") . ")");
 
         // Apply Inner Filters
         if ($request->innerFilters) {
@@ -233,7 +241,7 @@ trait CompilesQueries
                 if ($va) {
                     $aliasPrefix = $aliases[$attr->modelClass] ?? 't0';
                     $fragment = str_replace('{THIS}', $aliasPrefix, $va->sql_fragment);
-                    $selectColumns[] = DB::raw($fragment . ' as "' . $finalAlias . '"');
+                    $selectColumns[] = DB::raw($fragment . ' as ' . $query->getGrammar()->wrap($finalAlias));
                     continue;
                 } else {
                     throw new ReportMakerException("Virtual Attribute '{$name}' is missing or deleted. This query cannot be executed.");
@@ -440,8 +448,8 @@ trait CompilesQueries
                 $query->{$map['between']}($col, (array) $value, $bool);
             } else {
                 if ($type === 'having' && $value !== null && (is_float($value) || is_int($value))) {
-                    // Bypass SQLite PDO string binding quirk where Integer < String is always true
-                    $query->havingRaw($query->getGrammar()->wrap($col) . " {$node->operator} {$value}", [], $bool);
+                    // Use parameter binding even for numeric values to prevent injection
+                    $query->havingRaw($query->getGrammar()->wrap($col) . " {$node->operator} ?", [$value], $bool);
                 } else {
                     $query->{$map['default']}($col, $node->operator, $value, $bool);
                 }

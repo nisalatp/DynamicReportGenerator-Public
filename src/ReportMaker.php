@@ -3,6 +3,7 @@
 namespace Nisalatp\DynamicReportGenerator;
 
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 use Nisalatp\DynamicReportGenerator\Types\ReportRequest;
 use Nisalatp\DynamicReportGenerator\Types\Attribute;
 use Nisalatp\DynamicReportGenerator\Registry\VirtualAttributeRegistry;
@@ -194,14 +195,18 @@ class ReportMaker
 
     /**
      * Convert a Builder query to a raw SQL string with bindings for debugging.
+     *
+     * @internal This output is for debugging/logging ONLY and must NEVER be
+     *           executed via DB::statement() or similar — use the Builder directly.
      */
     public function toRawSql(Builder $query): string
     {
         $sql = $query->toSql();
         $bindings = $query->getBindings();
+        $pdo = DB::connection()->getPdo();
 
         foreach ($bindings as $binding) {
-            $value = is_numeric($binding) ? $binding : "'" . addslashes($binding) . "'";
+            $value = is_numeric($binding) ? (string) $binding : $pdo->quote((string) $binding);
             $sql = preg_replace('/\?/', $value, $sql, 1);
         }
 

@@ -36,12 +36,14 @@ class FilterBuilder
      * @param bool $isVirtual True if the column is a Virtual Attribute.
      * @return self
      */
-    public function where(string $modelClass, string $column, string $operator, mixed $value = null, string $type = 'string', bool $isVirtual = false): self
+    public function where(string $modelClass, string $column, mixed $operatorOrValue = '=', mixed $value = null, string $type = 'string', bool $isVirtual = false): self
     {
-        // For standard operators like '=', '>', etc.
+        // Support 3-arg shorthand: where(model, column, value) defaults operator to '='
         if (func_num_args() === 3) {
-            $value = $operator;
+            $value = $operatorOrValue;
             $operator = '=';
+        } else {
+            $operator = (string) $operatorOrValue;
         }
 
         $this->children[] = new FilterLeaf(
@@ -56,13 +58,15 @@ class FilterBuilder
      * Add an OR WHERE clause.
      * Note: In this simple builder, this wraps the condition in an 'or' FilterGroup.
      */
-    public function orWhere(string $modelClass, string $column, string $operator, mixed $value = null, string $type = 'string', bool $isVirtual = false): self
+    public function orWhere(string $modelClass, string $column, mixed $operatorOrValue = '=', mixed $value = null, string $type = 'string', bool $isVirtual = false): self
     {
         // To implement OR logic at the current level, we might need a sub-group if the parent is 'and'.
         // For a simple builder, we can just create an OR group with the new condition.
         if (func_num_args() === 3) {
-            $value = $operator;
+            $value = $operatorOrValue;
             $operator = '=';
+        } else {
+            $operator = (string) $operatorOrValue;
         }
 
         $leaf = new FilterLeaf(

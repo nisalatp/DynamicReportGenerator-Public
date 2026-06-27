@@ -26,7 +26,20 @@ class ReportBuilderRequest
         }
 
         $baseModel = $payload['baseModel'];
-        $targetModels = $payload['targetModels'] ?? [];
+
+        // Validate that the base model is a real Eloquent Model class to prevent
+        // arbitrary class instantiation attempts downstream.
+        if (!class_exists($baseModel) || !is_subclass_of($baseModel, \Illuminate\Database\Eloquent\Model::class)) {
+            throw new InvalidArgumentException(
+                "The baseModel '{$baseModel}' is not a valid Eloquent model class."
+            );
+        }
+
+        $targetModels = array_filter($payload['targetModels'] ?? [], function ($model) {
+            return is_string($model)
+                && class_exists($model)
+                && is_subclass_of($model, \Illuminate\Database\Eloquent\Model::class);
+        });
 
         $selectedAttributes = collect($payload['selectedAttributes'] ?? [])
             ->filter(fn($attr) => !empty($attr['column']))

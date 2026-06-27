@@ -77,8 +77,14 @@ trait EnforcesSecurity
                     $this->resolvedRestrictions[$key] = $r->restriction_type;
                 }
             }
-        } catch (\Exception $e) {
-            // Ignore if table doesn't exist yet
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Gracefully handle table-not-found during initial setup (before migrations run).
+            // Any other query exception (connection failure, syntax error, etc.) is re-thrown
+            // to prevent ALS from silently degrading to zero restrictions.
+            $tableNotFoundCodes = ['42S02', '42P01', 'HY000']; // MySQL, PostgreSQL, SQLite
+            if (!in_array($e->getCode(), $tableNotFoundCodes, false)) {
+                throw $e;
+            }
         }
     }
 
